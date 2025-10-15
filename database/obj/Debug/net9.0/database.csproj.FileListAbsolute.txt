@@ -1,0 +1,14 @@
+C:\Users\David\source\repos\FaktuRka\database\bin\Debug\net9.0\database.deps.json
+C:\Users\David\source\repos\FaktuRka\database\bin\Debug\net9.0\database.runtimeconfig.json
+C:\Users\David\source\repos\FaktuRka\database\bin\Debug\net9.0\database.dll
+C:\Users\David\source\repos\FaktuRka\database\bin\Debug\net9.0\database.pdb
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.csproj.AssemblyReference.cache
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.AssemblyInfoInputs.cache
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.AssemblyInfo.cs
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.csproj.CoreCompileInputs.cache
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.dll
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\refint\database.dll
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.pdb
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\database.genruntimeconfig.cache
+C:\Users\David\source\repos\FaktuRka\database\obj\Debug\net9.0\ref\database.dll
