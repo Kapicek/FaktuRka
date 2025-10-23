@@ -13,8 +13,8 @@ public class Payment
 
     public int InvoiceId { get; set; }
     public Invoice Invoice { get; set; } = default!;
-
-    public DateOnly ReceivedAt { get; set; }
+    public DateTimeOffset ReceivedAt { get; set; }
+    public bool Received { get; set; }
 
     [Precision(14, 2)]
     public decimal Amount { get; set; }
