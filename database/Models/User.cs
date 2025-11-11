@@ -3,19 +3,24 @@ using System.ComponentModel.DataAnnotations;
 
 namespace database.Models;
 
-[Index(nameof(Email), IsUnique = true)]
+[Index(nameof(GoogleId), IsUnique = true)]
 public class User
 {
     [Key]
     public int Id { get; set; }
     [MaxLength(320)] public string Email { get; set; } = default!;
-    public string PasswordHash { get; set; } = default!;
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string? CompanyName { get; set; }
     public string? Ico { get; set; }
     public string? Dic { get; set; }
     public bool VatPayer { get; set; }
+
+    // dělal bych to radši přes google - přidávám tohle
+
+    public string? GoogleId { get; set; }
+    public string AuthProvider { get; set; } = "Google";
+    public string? AvatarUrl { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
