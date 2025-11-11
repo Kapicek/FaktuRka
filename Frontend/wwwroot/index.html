@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8" />
+    <title>FaktuRka - Test Google Login</title>
+
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+    <style>
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            max-width: 600px;
+            margin: 40px auto;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            white-space: pre-wrap;
+            font-size: 14px;
+        }
+
+        .error {
+            color: #b00020;
+        }
+    </style>
+</head>
+<body>
+    <h1>FaktuRka - Test Google Login</h1>
+
+    <p>
+        Mistře Vargo, toto je jen na testovačku loginu, neostýchej se to pak klidně celé zahodit ;)
+    </p>
+
+    <!-- Google login button container -->
+    <div id="g_id_onload"
+         data-client_id="280933255979-s537o5v62tpgit046u3b8jp22ec8on34.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+
+    <div class="g_id_signin"
+         data-type="standard"
+         data-size="large"
+         data-theme="outline"
+         data-text="continue_with"
+         data-shape="rectangular"
+         data-logo_alignment="left">
+    </div>
+
+    <div id="result"></div>
+
+    <script>
+    const BACKEND_URL = "https://localhost:7010";
+
+    async function handleCredentialResponse(response) {
+        const idToken = response.credential;
+        const resultDiv = document.getElementById("result");
+        resultDiv.textContent = "Přijat ID token od Google, posílám na backend...";
+
+        try {
+            const res = await fetch(`${BACKEND_URL}/api/auth/google`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ idToken })
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                resultDiv.innerHTML = `<span class="error">Chyba z backendu (${res.status}):</span>\n` +
+                    JSON.stringify(data, null, 2);
+                return;
+            }
+
+            resultDiv.textContent =
+                "Přihlášení OK.\n\n" +
+                "Odpověď backendu:\n" +
+                JSON.stringify(data, null, 2);
+
+            window.fakturkaJwt = data.token || data.Token;
+
+            console.log("JWT token z backendu:", window.fakturkaJwt);
+        } catch (err) {
+            console.error(err);
+            resultDiv.innerHTML = `<span class="error">Chyba při volání backendu:</span>\n${err}`;
+        }
+    }
+    </script>
+
+</body>
+</html>
