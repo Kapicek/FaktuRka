@@ -3,10 +3,16 @@ import { SignInPage } from "@toolpad/core/SignInPage";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectToken } from "../features/auth/authSlice";
-import { useLoginMutation } from "../features/auth/authApi";
+import { useLoginMutation, useGoogleLoginMutation } from "../features/auth/authApi";
 import { Box } from "@mui/material";
 
 type Provider = { id: "credentials" | string; name?: string };
+
+declare global {
+    interface Window {
+        google?: any;
+    }
+}
 
 export default function SignIn() {
     const token = useSelector(selectToken);
@@ -14,6 +20,7 @@ export default function SignIn() {
     const navigate = useNavigate();
     const callbackUrl = params.get("callbackUrl") || "/";
     const [login] = useLoginMutation();
+    const [googleLogin] = useGoogleLoginMutation();
 
     if (token === undefined) return <LinearProgress />;
     if (token) {
@@ -21,31 +28,102 @@ export default function SignIn() {
         return null;
     }
 
-    return (
-        <Box sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            height: "100vh",
-            width: "100vw",
-            bgcolor: "background.paper",
-            padding: 2,
-        }}>
+    const getGoogleIdToken = (): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const google = window.google;
 
-            <SignInPage
-                providers={[{ id: "credentials", name: "Credentials" }, { id: 'google', name: 'Google' }]}
-                signIn={async (provider: Provider, formData?: FormData, cbUrl?: string) => {
-                    if (provider.id !== "credentials") {
-                        return { error: "Only credentials are supported" };
+            if (!google?.accounts?.id) {
+                reject(new Error("Google SDK není naètený"));
+                return;
+            }
+
+            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+            if (!clientId) {
+                reject(new Error("Chybí VITE_GOOGLE_CLIENT_ID v konfiguraci"));
+                return;
+            }
+
+            // Inicializace One Tap / Sign-In
+            google.accounts.id.initialize({
+                client_id: clientId,
+                callback: (response: any) => {
+                    if (response?.credential) {
+                        resolve(response.credential);
+                    } else {
+                        reject(new Error("Google sign-in nevrátil credential"));
                     }
+                },
+            });
+
+            // Zobrazí One Tap / výbìr úètu po kliknutí na "Google"
+            google.accounts.id.prompt((notification: any) => {
+                const notDisplayedReason = notification.getNotDisplayedReason?.();
+                const skippedReason = notification.getSkippedReason?.();
+
+                if (notDisplayedReason || skippedReason) {
+                    reject(
+                        new Error(
+                            `Google sign-in byl zrušen nebo neprobìhl (${notDisplayedReason ?? skippedReason})`
+                        )
+                    );
+                }
+            });
+        });
+    };
+
+    return (
+        <Box
+            sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100vh",
+                width: "100vw",
+                bgcolor: "background.paper",
+                padding: 2,
+            }}
+        >
+            <SignInPage
+                providers={[
+                    { id: "credentials", name: "Email & heslo" },
+                    { id: "google", name: "Google" },
+                ]}
+                signIn={async (provider: Provider, formData?: FormData, cbUrl?: string) => {
+                    const targetUrl = cbUrl || callbackUrl || "/";
+
+                    // === GOOGLE PROVIDER ===
+                    if (provider.id === "google") {
+                        try {
+                            const idToken = await getGoogleIdToken();
+                            await googleLogin({ idToken }).unwrap();
+                            // token se uloží pøes extraReducer v authSlice
+                            navigate(targetUrl, { replace: true });
+                            return {};
+                        } catch (e: unknown) {
+                            const anyErr = e as { data?: any; message?: string };
+                            const msg =
+                                anyErr?.data?.message ??
+                                anyErr?.data?.error ??
+                                anyErr?.message ??
+                                "Google pøihlášení selhalo";
+                            return { error: String(msg) };
+                        }
+                    }
+
+                    // === CREDENTIALS PROVIDER ===
+                    if (provider.id !== "credentials") {
+                        return { error: "Nepodporovaný provider" };
+                    }
+
                     const email = (formData?.get("email") as string) ?? "";
                     const password = (formData?.get("password") as string) ?? "";
-                    if (!email || !password) return { error: "Email and password are required" };
+
+                    if (!email || !password) return { error: "Email a heslo jsou povinné" };
 
                     try {
-                        const res = await login({ email, password }).unwrap();
-                        navigate(cbUrl || callbackUrl || "/", { replace: true });
+                        await login({ email, password }).unwrap();
+                        navigate(targetUrl, { replace: true });
                         return {};
                     } catch (e: unknown) {
                         const anyErr = e as { data?: any; message?: string };
@@ -53,7 +131,7 @@ export default function SignIn() {
                             anyErr?.data?.message ??
                             anyErr?.data?.error ??
                             anyErr?.message ??
-                            "Sign-in failed";
+                            "Pøihlášení selhalo";
                         return { error: String(msg) };
                     }
                 }}

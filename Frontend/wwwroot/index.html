@@ -57,7 +57,8 @@
 
     async function handleCredentialResponse(response) {
         const idToken = response.credential;
-        const resultDiv = document.getElementById("result");
+        const resultDiv = document.getElementById("result")
+
         resultDiv.textContent = "Přijat ID token od Google, posílám na backend...";
 
         try {

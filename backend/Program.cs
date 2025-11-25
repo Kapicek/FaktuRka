@@ -52,7 +52,9 @@ var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
 var allowedOrigins = new[]
 {
     "https://localhost:7121",
-    "http://localhost:5232"
+    "http://localhost:5232",
+    "http://localhost:5173",
+    "https://localhost:5173"
 };
 
 
