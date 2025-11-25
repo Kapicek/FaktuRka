@@ -43,7 +43,7 @@ export default function SignIn() {
                 return;
             }
 
-            // Inicializace One Tap / Sign-In
+            // Sign-In
             google.accounts.id.initialize({
                 client_id: clientId,
                 callback: (response: any) => {
@@ -55,7 +55,7 @@ export default function SignIn() {
                 },
             });
 
-            // Zobrazí One Tap / výbìr úètu po kliknutí na "Google"
+            // Google
             google.accounts.id.prompt((notification: any) => {
                 const notDisplayedReason = notification.getNotDisplayedReason?.();
                 const skippedReason = notification.getSkippedReason?.();
