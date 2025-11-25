@@ -33,13 +33,13 @@ export default function SignIn() {
             const google = window.google;
 
             if (!google?.accounts?.id) {
-                reject(new Error("Google SDK není naètený"));
+                reject(new Error("Google SDK was not loaded"));
                 return;
             }
 
             const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
             if (!clientId) {
-                reject(new Error("Chybí VITE_GOOGLE_CLIENT_ID v konfiguraci"));
+                reject(new Error("missing VITE_GOOGLE_CLIENT_ID "));
                 return;
             }
 
@@ -63,7 +63,7 @@ export default function SignIn() {
                 if (notDisplayedReason || skippedReason) {
                     reject(
                         new Error(
-                            `Google sign-in byl zrušen nebo neprobìhl (${notDisplayedReason ?? skippedReason})`
+                            `Google sign-in has been canceled (${notDisplayedReason ?? skippedReason})`
                         )
                     );
                 }
@@ -86,7 +86,7 @@ export default function SignIn() {
         >
             <SignInPage
                 providers={[
-                    { id: "credentials", name: "Email & heslo" },
+                    { id: "credentials", name: "Email & password" },
                     { id: "google", name: "Google" },
                 ]}
                 signIn={async (provider: Provider, formData?: FormData, cbUrl?: string) => {
@@ -97,7 +97,6 @@ export default function SignIn() {
                         try {
                             const idToken = await getGoogleIdToken();
                             await googleLogin({ idToken }).unwrap();
-                            // token se uloží pøes extraReducer v authSlice
                             navigate(targetUrl, { replace: true });
                             return {};
                         } catch (e: unknown) {
@@ -106,20 +105,20 @@ export default function SignIn() {
                                 anyErr?.data?.message ??
                                 anyErr?.data?.error ??
                                 anyErr?.message ??
-                                "Google pøihlášení selhalo";
+                                "Google login failed";
                             return { error: String(msg) };
                         }
                     }
 
                     // === CREDENTIALS PROVIDER ===
                     if (provider.id !== "credentials") {
-                        return { error: "Nepodporovaný provider" };
+                        return { error: "Unsupported provider" };
                     }
 
                     const email = (formData?.get("email") as string) ?? "";
                     const password = (formData?.get("password") as string) ?? "";
 
-                    if (!email || !password) return { error: "Email a heslo jsou povinné" };
+                    if (!email || !password) return { error: "Email and password are required" };
 
                     try {
                         await login({ email, password }).unwrap();
@@ -131,7 +130,7 @@ export default function SignIn() {
                             anyErr?.data?.message ??
                             anyErr?.data?.error ??
                             anyErr?.message ??
-                            "Pøihlášení selhalo";
+                            "Login failed";
                         return { error: String(msg) };
                     }
                 }}
