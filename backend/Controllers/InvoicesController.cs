@@ -1,6 +1,6 @@
 ﻿using backend.Infrastructure;
 using backend.Models.Invoices;
-using backend.Services;
+using backend.Services.Abstraction;
 using database.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

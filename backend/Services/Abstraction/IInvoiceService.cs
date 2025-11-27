@@ -1,7 +1,7 @@
 ﻿using backend.Models.Invoices;
 using database.Models.Enums;
 
-namespace backend.Services;
+namespace backend.Services.Abstraction;
 
 public interface IInvoiceService
 {

@@ -1,4 +1,5 @@
-﻿using database;
+﻿using backend.Services.Abstraction;
+using database;
 using database.Models;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
@@ -7,6 +8,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
+namespace backend.Services;
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;

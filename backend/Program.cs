@@ -1,5 +1,6 @@
 using backend.Repositories;
 using backend.Services;
+using backend.Services.Abstraction;
 using database;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
@@ -89,6 +90,8 @@ builder.Services.AddScoped<ICustomerService, CustomerService>();
 builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<IInvoiceSequenceRepository, InvoiceSequenceRepository>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
+
+builder.Services.AddHttpClient<IAresService, AresService>();
 
 builder.Services.AddCors(options =>
 {
