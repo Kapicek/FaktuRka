@@ -11,7 +11,7 @@ namespace backend.DTOs.Ares
         public DateTime? ValidTo { get; set; }
 
         [JsonPropertyName("obchodniJmeno")]
-        public string BusinessName { get; set; }
+        public string? BusinessName { get; set; }
 
         [JsonPropertyName("primarniZaznam")]
         public bool IsPrimary { get; set; }
