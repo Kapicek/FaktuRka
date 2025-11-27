@@ -1,0 +1,53 @@
+/* Obal, ať se to chová jako fullWidth TextField */
+.geoapify-input-wrapper {
+    width: 100%;
+}
+
+/* Vzhled samotného inputu – podobný MUI Outlined, size=small */
+.geoapify-autocomplete-input {
+    box-sizing: border-box;
+    width: 100%;
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-size: 1rem;
+    /* MUI small */
+    line-height: 1.4375em;
+    padding: 8.5px 14px;
+    height: 56px;
+    /* viz MUI OutlinedInput */
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.23);
+    outline: none;
+    background-color: #fff;
+    transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+/* Hover efekt jako MUI */
+.geoapify-autocomplete-input:hover {
+    border-color: rgba(0, 0, 0, 0.87);
+}
+
+/* Focus efekt jako MUI primary */
+.geoapify-autocomplete-input:focus {
+    border-color: #1976d2;
+    box-shadow: 0 0 0 2px rgba(25, 118, 210, 0.2);
+}
+
+/* Dropdown list – trochu jako MUI menu/list */
+.geoapify-autocomplete-items {
+    font-family: "Roboto", "Helvetica", "Arial", sans-serif;
+    font-size: 0.875rem;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.23);
+    margin-top: 4px;
+    box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Jednotlivé položky */
+.geoapify-autocomplete-item {
+    padding: 6px 16px;
+}
+
+/* Aktivní položka (hover) – podobné MUI selected */
+.geoapify-autocomplete-items .active {
+    background-color: rgba(25, 118, 210, 0.08);
+}

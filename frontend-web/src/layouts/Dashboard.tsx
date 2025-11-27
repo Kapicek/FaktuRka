@@ -6,7 +6,6 @@ import { selectUser } from "../features/auth/authSlice";
 import UserMenu from "../components/user-menu/UserMenu";
 import Page from "../pages/Page";
 
-
 export default function Layout() {
     const user = useSelector(selectUser);
     if (user === undefined) return <LinearProgress />;

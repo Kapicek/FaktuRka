@@ -4,6 +4,10 @@ import Layout from "../layouts/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import SignIn from "../pages/SignIn";
 import Home from "../pages/Home";
+import Customers from "../pages/Customers";
+import Invoices from "../pages/Invoices";
+import { HomeRounded } from "@mui/icons-material";
+import CustomersForm from "../pages/CustomersForm";
 
 export const router = createBrowserRouter([
     {
@@ -17,7 +21,10 @@ export const router = createBrowserRouter([
                     {
                         element: <Layout />,
                         children: [
-                            { index: true, element: <Home />, handle: { breadcrumb: "Home" } },
+                            { index: true, element: <Home />, handle: { breadcrumb: <HomeRounded /> } },
+                            { index: true, path: "invoices", element: <Invoices />, handle: { breadcrumb: "Invoices" } },
+                            { index: true, path: "customers", element: <Customers />, handle: { breadcrumb: "Customers" } },
+                            { index: true, path: "customers/new", element: <CustomersForm /> },
                         ],
                     },
                 ],
