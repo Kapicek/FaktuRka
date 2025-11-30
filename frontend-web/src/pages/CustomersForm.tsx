@@ -49,7 +49,6 @@ const customerSchema = z.object({
     phone: z.string().trim().optional(),
     note: z.string().trim().optional(),
 
-    // neukazujeme v UI, ale posíláme na BE
     addressLine1: z.string().trim().optional(),
     addressLine2: z.string().trim().optional(),
     city: z.string().trim().optional(),
@@ -114,7 +113,6 @@ const CustomersForm: React.FC = () => {
         },
     });
 
-    // text v address inputu (pro edit)
     const [addressDisplay, setAddressDisplay] = useState("");
     const { colorScheme } = useColorScheme();
 
@@ -274,6 +272,9 @@ const CustomersForm: React.FC = () => {
                     <form onSubmit={handleSubmit(onSubmit)} noValidate>
                         <Stack direction="column" spacing={2} sx={{ flex: 1, height: "100%" }}>
                             {/* Základní údaje */}
+                            <Typography variant="h6" fontWeight={600}>
+                                General information
+                            </Typography>
                             <Stack direction="row" spacing={2}>
                                 <TextField
                                     fullWidth
