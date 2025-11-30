@@ -8,6 +8,7 @@ import Customers from "../pages/Customers";
 import Invoices from "../pages/Invoices";
 import { HomeRounded } from "@mui/icons-material";
 import CustomersForm from "../pages/CustomersForm";
+import InvoicesForm from "../pages/InvoicesForm";
 
 export const router = createBrowserRouter([
     {
@@ -23,6 +24,7 @@ export const router = createBrowserRouter([
                         children: [
                             { index: true, element: <Home />, handle: { breadcrumb: <HomeRounded /> } },
                             { index: true, path: "invoices", element: <Invoices />, handle: { breadcrumb: "Invoices" } },
+                            { index: true, path: "invoices/new", element: <InvoicesForm /> },
                             { index: true, path: "customers", element: <Customers />, handle: { breadcrumb: "Customers" } },
                             { index: true, path: "customers/new", element: <CustomersForm /> },
                         ],
