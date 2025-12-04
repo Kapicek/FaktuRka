@@ -1,5 +1,5 @@
 import { Button, Stack, Typography } from '@mui/material'
-import { DeleteRounded, DownloadRounded, FileOpenRounded } from '@mui/icons-material';
+import { NoteAddRounded } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import InvoicesDatagrid from '../components/invoices/InvoicesDatagrid';
 import InvoicesDashboardCharts from '../components/invoices/InvoicesDashboardCharts';
@@ -15,7 +15,7 @@ const Invoices = () => {
                     Invoices
                 </Typography>
                 <Button
-                    startIcon={<FileOpenRounded />}
+                    startIcon={<NoteAddRounded />}
                     variant='contained'
                     disableElevation
                     sx={{ textTransform: "none" }}

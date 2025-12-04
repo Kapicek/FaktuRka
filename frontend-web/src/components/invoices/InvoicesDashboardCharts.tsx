@@ -90,7 +90,7 @@ const InvoicesDashboardCharts = () => {
                     <Stack direction={"row"} spacing={2} justifyContent={"space-between"}>
                         <Stack direction={"column"}>
                             <Typography variant="body1">Total:</Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 600, pb: 2 }}>
+                            <Typography variant="h6" sx={{ fontWeight: 700, pb: 2 }}>
                                 {totalAmount.toLocaleString("cs-CZ")} CZK
                             </Typography>
                             <Typography variant="body1">

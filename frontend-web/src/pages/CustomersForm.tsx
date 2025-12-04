@@ -319,7 +319,7 @@ const CustomersForm: React.FC = () => {
                                     <Grid size={{ xs: 12, sm: 12, md: 5 }}>
                                         <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
                                             <Typography variant="body2" color="text.secondary" lineHeight={1}>
-                                                Name or Company ID
+                                                Name or Company ID *
                                             </Typography>
                                             <Autocomplete<AresSearchItem, false, false, true>
                                                 fullWidth
@@ -335,12 +335,9 @@ const CustomersForm: React.FC = () => {
                                                         : `${option.businessName} (${option.companyId})`
                                                 }
                                                 onChange={(_, value) => {
-                                                    // 1) CLEAR – uživatel kliknul na křížek / nastala null hodnota
                                                     if (!value || typeof value === "string") {
                                                         setSelectedAresOption(null);
                                                         setAresSearchInput("");
-
-                                                        // vyčistit hodnoty, které ARES naplnil
                                                         setValue("name", "");
                                                         setValue("ico", "");
                                                         setValue("dic", "");
@@ -348,13 +345,12 @@ const CustomersForm: React.FC = () => {
                                                         setValue("addressLine1", "");
                                                         setValue("city", "");
                                                         setValue("zip", "");
-                                                        setValue("countryCode", ""); // nebo "" pokud chceš úplně prázdné
+                                                        setValue("countryCode", "");
                                                         setAddressDisplay("");
 
                                                         return;
                                                     }
 
-                                                    // 2) SELECT – vybraná firma z ARES
                                                     const selected = value as AresSearchItem;
                                                     setSelectedAresOption(selected);
 
@@ -445,54 +441,48 @@ const CustomersForm: React.FC = () => {
                                 Contact details
                             </Typography>
                             <Stack direction="row" spacing={2}>
-                                <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                    <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                        Address
-                                    </Typography>
-                                    {GEOAPIFY_API_KEY ? (
-                                        <GeoapifyContext apiKey={GEOAPIFY_API_KEY}>
-                                            <GeoapifyGeocoderAutocomplete
-                                                placeholder="Schlosshoferstrasse 20,1210 Vienna"
-                                                type="street"
-                                                lang="cs"
-                                                countryCodes={["cz"]}
-                                                limit={7}
+                                <Grid container sx={{ flex: 1 }} spacing={2}>
+                                    <Grid size={{ xs: 12, sm: 12, md: 5 }}>
+                                        <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
+                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                                Address *
+                                            </Typography>
+                                            <TextField
                                                 value={addressDisplay}
-                                                placeSelect={handleAddressSelect}
+                                                onChange={(e) => setAddressDisplay(e.target.value)}
+                                                placeholder="Schlosshoferstrasse 20,1210 Vienna"
                                             />
-                                        </GeoapifyContext>
-                                    ) : (
-                                        <TextField
-                                            value={addressDisplay}
-                                            onChange={(e) => setAddressDisplay(e.target.value)}
-                                            helperText="Missing GEOAPIFY API key"
-                                        />
-                                    )}
-                                </Stack>
-                                <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                    <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                        Email
-                                    </Typography>
-                                    <TextField
-                                        sx={{ flex: 1 }}
-                                        {...register("email")}
-                                        error={!!errors.email}
-                                        helperText={errors.email?.message}
-                                        placeholder="example@gmail.com"
-                                    />
-                                </Stack>
-                                <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                    <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                        Phone
-                                    </Typography>
-                                    <TextField
-                                        sx={{ flex: 1 }}
-                                        {...register("phone")}
-                                        error={!!errors.phone}
-                                        helperText={errors.phone?.message}
-                                        placeholder="+420 123 456 789"
-                                    />
-                                </Stack>
+                                        </Stack>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+                                        <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
+                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                                Email
+                                            </Typography>
+                                            <TextField
+                                                sx={{ flex: 1 }}
+                                                {...register("email")}
+                                                error={!!errors.email}
+                                                helperText={errors.email?.message}
+                                                placeholder="example@gmail.com"
+                                            />
+                                        </Stack>
+                                    </Grid>
+                                    <Grid size={{ xs: 12, sm: 12, md: 3 }}>
+                                        <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
+                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                                Phone
+                                            </Typography>
+                                            <TextField
+                                                sx={{ flex: 1 }}
+                                                {...register("phone")}
+                                                error={!!errors.phone}
+                                                helperText={errors.phone?.message}
+                                                placeholder="+420 123 456 789"
+                                            />
+                                        </Stack>
+                                    </Grid>
+                                </Grid>
                             </Stack>
                         </Stack>
                     </CardContent>
@@ -515,7 +505,7 @@ const CustomersForm: React.FC = () => {
                             <TextField
                                 placeholder="Internal note about the customer"
                                 multiline
-                                minRows={3}
+                                minRows={4}
                                 {...register("note")}
                                 error={!!errors.note}
                                 helperText={errors.note?.message}
