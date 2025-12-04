@@ -101,6 +101,7 @@ const InvoicesDashboardCharts = () => {
                             <PieChart
                                 series={[
                                     {
+                                        highlightScope: { fade: 'global', highlight: 'item' },
                                         data: statusPieData.length
                                             ? statusPieData
                                             : [

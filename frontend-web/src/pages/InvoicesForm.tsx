@@ -17,9 +17,9 @@ import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import {
-    ArrowBackIosNewRounded,
     DeleteOutline,
     AddRounded,
+    ArrowBackRounded,
 } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
 import { z } from "zod";
@@ -178,8 +178,8 @@ const InvoicesForm: React.FC = () => {
                     Create invoice
                 </Typography>
                 <Button
-                    startIcon={<ArrowBackIosNewRounded />}
-                    variant="contained"
+                    startIcon={<ArrowBackRounded />}
+                    variant="outlined"
                     disableElevation
                     sx={{ textTransform: "none" }}
                     onClick={() => navigate("/invoices")}
@@ -408,7 +408,7 @@ const InvoicesForm: React.FC = () => {
                             </Stack>
 
                             {/* Veřejná / interní poznámka */}
-                            <Stack direction="row" spacing={2} sx={{ pb: 4 }}>
+                            <Stack direction="row" spacing={2} sx={{ pb: 2 }}>
                                 <Controller
                                     name="notePublic"
                                     control={control}
@@ -441,13 +441,30 @@ const InvoicesForm: React.FC = () => {
                                 />
                             </Stack>
 
-                            <Divider />
-
                             {/* Položky faktury */}
                             <Stack direction="column" spacing={2}>
-                                <Typography variant="h6" fontWeight={600}>
-                                    Items
-                                </Typography>
+                                <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                    <Typography variant="h6" fontWeight={600}>
+                                        Items
+                                    </Typography>
+                                    <Button
+                                        startIcon={<AddRounded />}
+                                        variant="outlined"
+                                        onClick={() =>
+                                            append({
+                                                name: "",
+                                                description: "",
+                                                quantity: 1,
+                                                unit: "ks",
+                                                unitPrice: 0,
+                                                vatRate: 21,
+                                                discount: 0,
+                                            })
+                                        }
+                                    >
+                                        Add
+                                    </Button>
+                                </Stack>
 
                                 {fields.map((field, index) => (
                                     <Card
@@ -460,11 +477,10 @@ const InvoicesForm: React.FC = () => {
                                                 Item {index + 1}
                                             </Typography>
                                             <IconButton
-                                                size="small"
                                                 onClick={() => remove(index)}
                                                 disabled={fields.length === 1}
                                             >
-                                                <DeleteOutline fontSize="small" />
+                                                <DeleteOutline />
                                             </IconButton>
                                         </Stack>
 
@@ -585,25 +601,6 @@ const InvoicesForm: React.FC = () => {
                                         />
                                     </Card>
                                 ))}
-
-                                <Button
-                                    startIcon={<AddRounded />}
-                                    variant="outlined"
-                                    sx={{ alignSelf: "flex-start", mt: 4 }}
-                                    onClick={() =>
-                                        append({
-                                            name: "",
-                                            description: "",
-                                            quantity: 1,
-                                            unit: "ks",
-                                            unitPrice: 0,
-                                            vatRate: 21,
-                                            discount: 0,
-                                        })
-                                    }
-                                >
-                                    Add item
-                                </Button>
 
                                 {itemsErrorMessage && (
                                     <Typography color="error" variant="body2">

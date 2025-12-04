@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
 import { selectToken } from "../features/auth/authSlice";
 import { useLoginMutation, useGoogleLoginMutation } from "../features/auth/authApi";
-import { Box } from "@mui/material";
+import { Box, Checkbox, FormControlLabel, Link, useTheme } from "@mui/material";
 
 type Provider = { id: "credentials" | string; name?: string };
 
@@ -12,6 +12,45 @@ declare global {
     interface Window {
         google?: any;
     }
+}
+
+const RememberMeCheckbox = () => {
+    const theme = useTheme();
+    return (
+        <FormControlLabel
+            label="Remember me"
+            control={
+                <Checkbox
+                    name="remember"
+                    value="true"
+                    color="primary"
+                    sx={{ padding: 0.5, '& .MuiSvgIcon-root': { fontSize: 20 } }}
+                />
+            }
+            slotProps={{
+                typography: {
+                    color: 'textSecondary',
+                    fontSize: theme.typography.pxToRem(14),
+                },
+            }}
+        />
+    );
+}
+
+const SignUpLink = () => {
+    return (
+        <Link href="/" variant="body2">
+            Sign up
+        </Link>
+    );
+}
+
+const ForgotPasswordLink = () => {
+    return (
+        <Link href="/" variant="body2">
+            Forgot password?
+        </Link>
+    );
 }
 
 export default function SignIn() {
@@ -50,7 +89,7 @@ export default function SignIn() {
                     if (response?.credential) {
                         resolve(response.credential);
                     } else {
-                        reject(new Error("Google sign-in nevrátil credential"));
+                        reject(new Error("Google sign-in nevrï¿½til credential"));
                     }
                 },
             });
@@ -71,6 +110,7 @@ export default function SignIn() {
         });
     };
 
+
     return (
         <Box
             sx={{
@@ -89,6 +129,11 @@ export default function SignIn() {
                     { id: "credentials", name: "Email & password" },
                     { id: "google", name: "Google" },
                 ]}
+                slots={{
+                    signUpLink: SignUpLink,
+                    rememberMe: RememberMeCheckbox,
+                    forgotPasswordLink: ForgotPasswordLink,
+                }}
                 signIn={async (provider: Provider, formData?: FormData, cbUrl?: string) => {
                     const targetUrl = cbUrl || callbackUrl || "/";
 

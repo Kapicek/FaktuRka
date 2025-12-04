@@ -6,7 +6,7 @@ const columns: GridColDef[] = [
     {
         field: 'name',
         headerName: 'Name',
-        width: 150,
+        width: 140,
     },
     {
         field: 'ico',

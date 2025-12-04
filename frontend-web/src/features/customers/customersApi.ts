@@ -28,6 +28,32 @@ export type Customer = CustomerBaseAttributes & {
     id: number;
 };
 
+// ===== ARES types =====
+export type AresSearchItem = {
+    companyId: string;
+    businessName: string;
+    fullAddress: string;
+    legalForm: string;
+};
+
+export type AresDetail = {
+    ico: string;
+    obchodniJmeno: string;
+    pravniForma?: string;
+    dic?: string;
+    sidlo?: {
+        nazevUlice?: string;
+        cisloDomovni?: number;
+        cisloOrientacni?: number;
+        cisloOrientacniPismeno?: string;
+        psc?: number;
+        pscTxt?: string;
+        nazevObce?: string;
+        textovaAdresa?: string;
+    };
+    [key: string]: any;
+};
+
 export const customersApi = baseApi.injectEndpoints({
     endpoints: (build) => ({
         // ===== List customers =====
@@ -102,6 +128,25 @@ export const customersApi = baseApi.injectEndpoints({
                 { type: "Customer" as const, id: "LIST" },
             ],
         }),
+        // ===== ARES search =====
+        searchAres: build.query<
+            AresSearchItem[],
+            { query: string; limit?: number }
+        >({
+            query: ({ query, limit = 10 }) => ({
+                url: "/Ares/search",
+                method: "GET",
+                params: { query, limit },
+            }),
+        }),
+
+        // ===== ARES detail by ICO =====
+        getAresByIco: build.query<AresDetail, string>({
+            query: (ico) => ({
+                url: `/Ares/${ico}`,
+                method: "GET",
+            }),
+        }),
     }),
     overrideExisting: false,
 });
@@ -113,4 +158,7 @@ export const {
     useCreateCustomerMutation,
     useUpdateCustomerMutation,
     useDeleteCustomerMutation,
+    useSearchAresQuery,
+    useGetAresByIcoQuery,
+    useLazyGetAresByIcoQuery,
 } = customersApi;

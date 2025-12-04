@@ -1,7 +1,8 @@
 import Box from "@mui/material/Box";
-import { Chip, type ChipProps } from "@mui/material";
+import { Chip, Stack, type ChipProps, Tooltip } from "@mui/material";
 import {
     DataGrid,
+    GridActionsCellItem,
     type GridColDef,
 } from "@mui/x-data-grid";
 
@@ -13,8 +14,10 @@ import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 
 import { useListInvoicesQuery } from "../../features/invoices/invoicesApi";
+import React from "react";
+import { Delete, Edit, FileDownloadRounded } from "@mui/icons-material";
+import { Link } from "react-router-dom";
 
-// FE kopie backend enumu
 export enum InvoiceStatus {
     Draft = 0,
     Issued = 1,
@@ -67,7 +70,10 @@ const columns: GridColDef[] = [
     {
         field: "numberFull",
         headerName: "Invoice Number",
-        width: 150,
+        width: 120,
+        renderCell: (params) => (
+            <Link style={{ textDecoration: "underline" }} to={`/invoices/${params.row.id}`}>{params.value}</Link>
+        )
     },
     {
         field: "status",
@@ -93,17 +99,17 @@ const columns: GridColDef[] = [
     {
         field: "issueDate",
         headerName: "Issue Date",
-        width: 150,
+        width: 130,
     },
     {
         field: "dueDate",
         headerName: "Due Date",
-        width: 150,
+        width: 130,
     },
     {
         field: "customerName",
         headerName: "Customer Name",
-        width: 200,
+        width: 150,
     },
     {
         field: "total",
@@ -114,6 +120,41 @@ const columns: GridColDef[] = [
         field: "currency",
         headerName: "Currency",
         width: 100,
+    },
+    {
+        field: 'actions',
+        type: 'actions',
+        headerName: 'Actions',
+        width: 100,
+        cellClassName: 'actions',
+        renderCell: () => (
+            <Stack direction="row" spacing={0}>
+                <Tooltip title="Edit">
+                    <GridActionsCellItem
+                        icon={<Edit />}
+                        label="Edit"
+                        // onClick={() => handleEditClick(props.id)}
+                        color="default"
+                    />
+                </Tooltip>
+                <Tooltip title="Download pdf">
+                    <GridActionsCellItem
+                        icon={<FileDownloadRounded />}
+                        label="Export pdf"
+                        // onClick={() => handleDeleteClick(props.id)}
+                        color="default"
+                    />
+                </Tooltip>
+                <Tooltip title="Delete">
+                    <GridActionsCellItem
+                        icon={<Delete />}
+                        label="Delete"
+                        // onClick={() => handleDeleteClick(props.id)}
+                        color="default"
+                    />
+                </Tooltip>
+            </Stack>
+        ),
     },
 ];
 
