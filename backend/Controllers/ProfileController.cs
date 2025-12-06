@@ -1,8 +1,7 @@
-﻿using backend.Services.Abstraction;
+﻿using backend.Infrastructure;
+using backend.Services.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
 
 namespace backend.Controllers
 {
@@ -23,7 +22,7 @@ namespace backend.Controllers
         [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyProfile()
         {
-            var userId = GetUserIdFromToken();
+            var userId = User.GetUserId();
 
             var profile = await _userService.GetProfileAsync(userId);
             if (profile == null)
@@ -54,29 +53,17 @@ namespace backend.Controllers
         [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update([FromBody] UserProfileDto dto)
         {
-            var userId = GetUserIdFromToken();
+            int userId = dto.Id;
+            if (userId <= 0)
+            {
+                userId = User.GetUserId();
+            }
 
             if (dto.Id != 0 && dto.Id != userId)
                 return Forbid();
 
             var updated = await _userService.UpdateProfileAsync(userId, dto);
             return Ok(updated);
-        }
-
-        private int GetUserIdFromToken()
-        {
-            var claim =
-                User.FindFirst(ClaimTypes.NameIdentifier) ??
-                User.FindFirst(JwtRegisteredClaimNames.Sub) ??
-                User.FindFirst("sub");
-
-            if (claim == null)
-                throw new InvalidOperationException("User id claim not found in token claims.");
-
-            if (!int.TryParse(claim.Value, out var userId))
-                throw new InvalidOperationException("User id claim is not a valid integer.");
-
-            return userId;
         }
     }
 }
