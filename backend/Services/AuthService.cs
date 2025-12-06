@@ -105,9 +105,18 @@ public class AuthService : IAuthService
         {
             Token = tokenString,
             ExpiresAt = expires,
-            UserId = user.Id,
-            Email = user.Email,
-            FullName = $"{user.FirstName} {user.LastName}".Trim()
+            Profile = new UserProfileDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FullName = $"{user.FirstName} {user.LastName}".Trim(),
+                CompanyName = user.CompanyName,
+                Ico = user.Ico,
+                Dic = user.Dic,
+                VatPayer = user.VatPayer,
+                AvatarUrl = user.AvatarUrl
+            }
         };
+
     }
 }
