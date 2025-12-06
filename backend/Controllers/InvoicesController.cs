@@ -11,7 +11,7 @@ namespace backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-//[Authorize]
+[Authorize]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _service;
@@ -25,7 +25,7 @@ public class InvoicesController : ControllerBase
     [ProducesResponseType(typeof(PagedResult<InvoiceListItemDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetList([FromQuery] InvoiceListQuery q)
     {
-        var userId = 0; //User.GetUserId();
+        var userId = User.GetUserId();
         var result = await _service.GetInvoicesAsync(userId, q);
         return Ok(result);
     }
