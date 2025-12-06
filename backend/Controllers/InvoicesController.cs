@@ -1,4 +1,6 @@
 ﻿using backend.Infrastructure;
+using backend.Models.Common;
+using backend.Models.Invoice;
 using backend.Models.Invoices;
 using backend.Services.Abstraction;
 using database.Models.Enums;
@@ -9,7 +11,7 @@ namespace backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+//[Authorize]
 public class InvoicesController : ControllerBase
 {
     private readonly IInvoiceService _service;
@@ -20,16 +22,12 @@ public class InvoicesController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(List<InvoiceListItemDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetList(
-        [FromQuery] int? customerId,
-        [FromQuery] InvoiceStatus? status,
-        [FromQuery] DateOnly? from,
-        [FromQuery] DateOnly? to)
+    [ProducesResponseType(typeof(PagedResult<InvoiceListItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetList([FromQuery] InvoiceListQuery q)
     {
-        var userId = User.GetUserId();
-        var data = await _service.GetInvoicesAsync(userId, customerId, status, from, to);
-        return Ok(data);
+        var userId = 0; //User.GetUserId();
+        var result = await _service.GetInvoicesAsync(userId, q);
+        return Ok(result);
     }
 
     [HttpGet("{id:int}")]

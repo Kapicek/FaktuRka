@@ -1,17 +1,13 @@
-﻿using backend.Models.Invoices;
+﻿using backend.Models.Common;
+using backend.Models.Invoice;
+using backend.Models.Invoices;
 using database.Models.Enums;
 
 namespace backend.Services.Abstraction;
 
 public interface IInvoiceService
 {
-    Task<List<InvoiceListItemDto>> GetInvoicesAsync(
-        int userId,
-        int? customerId,
-        InvoiceStatus? status,
-        DateOnly? from,
-        DateOnly? to);
-
+    Task<PagedResult<InvoiceListItemDto>> GetInvoicesAsync(int userId, InvoiceListQuery q);
     Task<InvoiceDetailDto?> GetInvoiceAsync(int userId, int id);
     Task<InvoiceDetailDto> CreateInvoiceAsync(int userId, InvoiceCreateRequest request);
 }

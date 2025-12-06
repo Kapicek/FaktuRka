@@ -59,5 +59,15 @@ public class InvoiceRepository : IInvoiceRepository
         await _db.Invoices.AddAsync(invoice);
     }
 
+    public IQueryable<Invoice> Query(int userId)
+    {
+        return _db.Invoices
+            .AsNoTracking()
+            .Where(i =>
+                i.UserId == userId &&
+                i.DeletedAt == null);
+    }
+
+
     public Task SaveChangesAsync() => _db.SaveChangesAsync();
 }

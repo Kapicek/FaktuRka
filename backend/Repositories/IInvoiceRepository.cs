@@ -14,5 +14,6 @@ public interface IInvoiceRepository
 
     Task<Invoice?> GetByIdAsync(int userId, int id);
     Task AddAsync(Invoice invoice);
+    IQueryable<Invoice> Query(int userId);
     Task SaveChangesAsync();
 }
