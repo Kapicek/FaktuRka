@@ -10,12 +10,19 @@ public class UserRepository : IUserRepository
     {
         _db = db;
     }
+    private IQueryable<User> UsersWithRoles =>
+        _db.Users
+           .Include(u => u.UserRoles)
+               .ThenInclude(ur => ur.Role);
 
     public Task<User?> GetByGoogleIdAsync(string googleId)
-        => _db.Users.FirstOrDefaultAsync(u => u.GoogleId == googleId);
+        => UsersWithRoles.FirstOrDefaultAsync(u => u.GoogleId == googleId);
 
     public Task<User?> GetByEmailAsync(string email)
-        => _db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        => UsersWithRoles.FirstOrDefaultAsync(u => u.Email == email);
+
+    public Task<User?> GetByIdAsync(int id)
+        => UsersWithRoles.FirstOrDefaultAsync(u => u.Id == id);
 
     public async Task<User> AddAsync(User user)
     {
@@ -25,7 +32,4 @@ public class UserRepository : IUserRepository
     }
 
     public Task SaveChangesAsync() => _db.SaveChangesAsync();
-
-    public Task<User?> GetByIdAsync(int id)
-        => _db.Users.FirstOrDefaultAsync(u => u.Id == id);
 }

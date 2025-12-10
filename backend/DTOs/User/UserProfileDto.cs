@@ -8,4 +8,5 @@
     public string? Dic { get; set; }
     public bool VatPayer { get; set; }
     public string? AvatarUrl { get; set; }
+    public List<string> Roles { get; set; } = new();
 }
