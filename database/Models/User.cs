@@ -1,14 +1,17 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using database.Models;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations;
 
-namespace database.Models;
-
 [Index(nameof(GoogleId), IsUnique = true)]
+[Index(nameof(Email), IsUnique = true)]
 public class User
 {
     [Key]
     public int Id { get; set; }
-    [MaxLength(320)] public string Email { get; set; } = default!;
+
+    [MaxLength(320)]
+    public string Email { get; set; } = default!;
+
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string? CompanyName { get; set; }
@@ -16,11 +19,16 @@ public class User
     public string? Dic { get; set; }
     public bool VatPayer { get; set; }
 
-    // dělal bych to radši přes google - přidávám tohle
-
     public string? GoogleId { get; set; }
-    public string AuthProvider { get; set; } = "Google";
+
+    // "Local" = email/heslo, "Google" = Google login -> todo tohle by šlo a chtělo by přehodit na enum
+    public string AuthProvider { get; set; } = "Local";
+
     public string? AvatarUrl { get; set; }
+
+    // Local login
+    public string? PasswordHash { get; set; }
+    public string? PasswordSalt { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;

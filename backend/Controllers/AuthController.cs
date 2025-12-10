@@ -1,4 +1,5 @@
-﻿using backend.Services.Abstraction;
+﻿using backend.DTOs.Auth;
+using backend.Services.Abstraction;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -27,5 +28,45 @@ public class AuthController : ControllerBase
 
         var result = await _authService.LoginWithGoogleAsync(request.IdToken);
         return Ok(result);
+    }
+
+    [HttpPost("register")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
+    {
+        try
+        {
+            var result = await _authService.RegisterAsync(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
+    }
+
+    [HttpPost("login")]
+    [Consumes("application/json")]
+    [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Login([FromBody] LoginRequestDto request)
+    {
+        try
+        {
+            var result = await _authService.LoginAsync(request);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
     }
 }
