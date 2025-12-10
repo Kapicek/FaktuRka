@@ -30,6 +30,7 @@ public class AuthService : IAuthService
         _configuration = configuration;
     }
 
+    // tohle si tu psal Petr - idk proč to je tu a proč to je virtual
     protected virtual Task<GoogleJsonWebSignature.Payload> ValidateGoogleTokenAsync(string idToken, string googleClientId)
     {
         return GoogleJsonWebSignature.ValidateAsync(idToken, new GoogleJsonWebSignature.ValidationSettings
@@ -206,14 +207,20 @@ public class AuthService : IAuthService
 
         var expires = DateTime.UtcNow.AddMinutes(int.Parse(jwtSection["AccessTokenLifetimeMinutes"] ?? "60"));
 
+        var roleNames = user.UserRoles
+            .Select(ur => ur.Role.Name)
+            .Distinct()
+            .ToList();
+
         var claims = new List<Claim>
         {
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new("name", $"{user.FirstName} {user.LastName}".Trim()),
             new("provider", user.AuthProvider)
-            // todo sem pak hodim rolex (nebo taky role)
         };
+
+        claims.AddRange(roleNames.Select(r => new Claim(ClaimTypes.Role, r)));
 
         var token = new JwtSecurityToken(
             issuer: jwtSection["Issuer"],
@@ -237,7 +244,8 @@ public class AuthService : IAuthService
                 Ico = user.Ico,
                 Dic = user.Dic,
                 VatPayer = user.VatPayer,
-                AvatarUrl = user.AvatarUrl
+                AvatarUrl = user.AvatarUrl,
+                Roles = roleNames
             }
         };
     }

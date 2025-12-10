@@ -37,4 +37,6 @@ public class User
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
     public ICollection<InvoiceSequence> InvoiceSequences { get; set; } = new List<InvoiceSequence>();
+
+    public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
 }
