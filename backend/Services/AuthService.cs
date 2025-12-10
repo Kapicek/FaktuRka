@@ -30,16 +30,21 @@ public class AuthService : IAuthService
         _configuration = configuration;
     }
 
+    protected virtual Task<GoogleJsonWebSignature.Payload> ValidateGoogleTokenAsync(string idToken, string googleClientId)
+    {
+        return GoogleJsonWebSignature.ValidateAsync(idToken, new GoogleJsonWebSignature.ValidationSettings
+        {
+            Audience = new[] { googleClientId }
+        });
+    }
+
     public async Task<AuthResultDto> LoginWithGoogleAsync(string idToken)
     {
         var googleClientId = _configuration["GoogleAuth:ClientId"]
             ?? throw new InvalidOperationException("GoogleAuth:ClientId not configured");
 
         // Validace ze strany googlu
-        var payload = await GoogleJsonWebSignature.ValidateAsync(idToken, new GoogleJsonWebSignature.ValidationSettings
-        {
-            Audience = new[] { googleClientId }
-        });
+        var payload = await ValidateGoogleTokenAsync(idToken, googleClientId);
 
         var googleId = payload.Subject;
         var email = payload.Email;

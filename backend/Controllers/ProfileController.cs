@@ -53,11 +53,7 @@ namespace backend.Controllers
         [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> Update([FromBody] UserProfileDto dto)
         {
-            int userId = dto.Id;
-            if (userId <= 0)
-            {
-                userId = User.GetUserId();
-            }
+            var userId = User.GetUserId();
 
             if (dto.Id != 0 && dto.Id != userId)
                 return Forbid();
