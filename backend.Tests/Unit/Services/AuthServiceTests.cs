@@ -2,18 +2,15 @@
 using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
-using System.Text;
 using System.Threading.Tasks;
 using backend.Services;
-using backend.Services.Abstraction;
-using backend.DTOs;
 using database;
 using database.Models;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
 using Moq;
 using Xunit;
+using backend.DTOs.Auth;
 
 namespace backend.Tests.Unit.Services
 {
@@ -70,7 +67,7 @@ namespace backend.Tests.Unit.Services
             };
         }
 
-        #region MissingConfiguration
+        #region LoginWithGoogle - MissingConfiguration
 
         [Fact]
         public async Task LoginWithGoogleAsync_Throws_WhenGoogleClientIdMissing()
@@ -91,7 +88,7 @@ namespace backend.Tests.Unit.Services
 
         #endregion
 
-        #region NewUser_Created
+        #region LoginWithGoogle - NewUser_Created
 
         [Fact]
         public async Task LoginWithGoogleAsync_CreatesNewUser_WhenNotFoundByGoogleOrEmail()
@@ -135,7 +132,7 @@ namespace backend.Tests.Unit.Services
 
         #endregion
 
-        #region ExistingByEmail_Updated
+        #region LoginWithGoogle - ExistingByEmail_Updated
 
         [Fact]
         public async Task LoginWithGoogleAsync_UpdatesExistingUserByEmail_WhenNoGoogleId()
@@ -181,7 +178,7 @@ namespace backend.Tests.Unit.Services
 
         #endregion
 
-        #region ExistingByGoogleId_Updated
+        #region LoginWithGoogle - ExistingByGoogleId_Updated
 
         [Fact]
         public async Task LoginWithGoogleAsync_UpdatesExistingUserByGoogleId()
@@ -229,7 +226,7 @@ namespace backend.Tests.Unit.Services
 
         #endregion
 
-        #region JwtContent
+        #region LoginWithGoogle - JwtContent
 
         [Fact]
         public async Task LoginWithGoogleAsync_GeneratesJwtWithExpectedClaims()
@@ -276,6 +273,348 @@ namespace backend.Tests.Unit.Services
             Assert.Contains(token.Claims, c => c.Type == JwtRegisteredClaimNames.Sub && c.Value == "42");
             Assert.Contains(token.Claims, c => c.Type == JwtRegisteredClaimNames.Email && c.Value == "user@test.com");
             Assert.Contains(token.Claims, c => c.Type == "provider" && c.Value == "Google");
+        }
+
+        #endregion
+
+        #region RegisterAsync - Validation
+
+        [Fact]
+        public async Task RegisterAsync_Throws_WhenEmailMissing()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var request = new RegisterRequestDto
+            {
+                Email = "   ",
+                Password = "Password123!",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.RegisterAsync(request));
+        }
+
+        [Fact]
+        public async Task RegisterAsync_Throws_WhenPasswordMissing()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var request = new RegisterRequestDto
+            {
+                Email = "user@test.com",
+                Password = "   ",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.RegisterAsync(request));
+        }
+
+        [Fact]
+        public async Task RegisterAsync_Throws_WhenPasswordTooShort()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var request = new RegisterRequestDto
+            {
+                Email = "user@test.com",
+                Password = "short",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.RegisterAsync(request));
+        }
+
+        #endregion
+
+        #region RegisterAsync - ExistingUser
+
+        [Fact]
+        public async Task RegisterAsync_Throws_WhenLocalUserAlreadyExists()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var existing = new User
+            {
+                Id = 5,
+                Email = "user@test.com",
+                PasswordHash = "somehash",
+                PasswordSalt = "somesalt",
+                AuthProvider = "Local"
+            };
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync(existing);
+
+            var request = new RegisterRequestDto
+            {
+                Email = "user@test.com",
+                Password = "Password123!",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() =>
+                service.RegisterAsync(request));
+        }
+
+        [Fact]
+        public async Task RegisterAsync_AddsLocalPasswordToExistingGoogleUser()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var existing = new User
+            {
+                Id = 5,
+                Email = "user@test.com",
+                FirstName = "Google",
+                LastName = "User",
+                PasswordHash = null,
+                PasswordSalt = null,
+                AuthProvider = "Google"
+            };
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync(existing);
+
+            repoMock.Setup(r => r.SaveChangesAsync())
+                    .Returns(Task.CompletedTask);
+
+            var request = new RegisterRequestDto
+            {
+                Email = "user@test.com",
+                Password = "Password123!",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            var result = await service.RegisterAsync(request);
+
+            Assert.False(string.IsNullOrEmpty(existing.PasswordHash));
+            Assert.False(string.IsNullOrEmpty(existing.PasswordSalt));
+            Assert.Equal("Google,Local", existing.AuthProvider);
+
+            Assert.NotNull(result);
+            Assert.Equal(existing.Email, result.Profile.Email);
+
+            repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
+        }
+
+        #endregion
+
+        #region RegisterAsync - NewLocalUser
+
+        [Fact]
+        public async Task RegisterAsync_CreatesNewLocalUser()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync((User?)null);
+
+            User? addedUser = null;
+
+            repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
+                    .Callback<User>(u => addedUser = u)
+                    .ReturnsAsync((User u) => u);
+
+            var request = new RegisterRequestDto
+            {
+                Email = "  USER@test.com ",
+                Password = "Password123!",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            var result = await service.RegisterAsync(request);
+
+            Assert.NotNull(addedUser);
+            Assert.Equal("user@test.com", addedUser!.Email);
+            Assert.Equal("John", addedUser.FirstName);
+            Assert.Equal("Doe", addedUser.LastName);
+            Assert.Equal("Local", addedUser.AuthProvider);
+            Assert.False(string.IsNullOrEmpty(addedUser.PasswordHash));
+            Assert.False(string.IsNullOrEmpty(addedUser.PasswordSalt));
+
+            Assert.NotNull(result);
+            Assert.Equal("user@test.com", result.Profile.Email);
+
+            repoMock.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Once);
+            repoMock.Verify(r => r.SaveChangesAsync(), Times.Never);
+        }
+
+        #endregion
+
+        #region LoginAsync
+
+        [Fact]
+        public async Task LoginAsync_Throws_WhenEmailOrPasswordMissing()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var request = new LoginRequestDto
+            {
+                Email = "user@test.com",
+                Password = " "
+            };
+
+            await Assert.ThrowsAsync<ArgumentException>(() =>
+                service.LoginAsync(request));
+        }
+
+        [Fact]
+        public async Task LoginAsync_Throws_WhenUserNotFound()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync((User?)null);
+
+            var request = new LoginRequestDto
+            {
+                Email = "user@test.com",
+                Password = "Password123!"
+            };
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.LoginAsync(request));
+        }
+
+        [Fact]
+        public async Task LoginAsync_Throws_WhenNoLocalPassword()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            var user = new User
+            {
+                Id = 5,
+                Email = "user@test.com",
+                PasswordHash = null,
+                PasswordSalt = null,
+                AuthProvider = "Google"
+            };
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync(user);
+
+            var request = new LoginRequestDto
+            {
+                Email = "user@test.com",
+                Password = "Password123!"
+            };
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.LoginAsync(request));
+        }
+
+        [Fact]
+        public async Task LoginAsync_Throws_WhenPasswordInvalid()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync((User?)null);
+
+            User? addedUser = null;
+
+            repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
+                    .Callback<User>(u => addedUser = u)
+                    .ReturnsAsync((User u) => u);
+
+            var registerRequest = new RegisterRequestDto
+            {
+                Email = "user@test.com",
+                Password = "CorrectPassword123!",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            var registerResult = await service.RegisterAsync(registerRequest);
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync(addedUser!);
+
+            var loginRequest = new LoginRequestDto
+            {
+                Email = "user@test.com",
+                Password = "WrongPassword!"
+            };
+
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+                service.LoginAsync(loginRequest));
+        }
+
+        [Fact]
+        public async Task LoginAsync_Succeeds_WithValidCredentials()
+        {
+            var config = CreateConfiguration();
+            var repoMock = new Mock<IUserRepository>();
+            var service = new AuthService(repoMock.Object, config);
+
+            // Registrace – vytvoří usera s hash/salt
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync((User?)null);
+
+            User? addedUser = null;
+
+            repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
+                    .Callback<User>(u => addedUser = u)
+                    .ReturnsAsync((User u) => u);
+
+            var registerRequest = new RegisterRequestDto
+            {
+                Email = "user@test.com",
+                Password = "CorrectPassword123!",
+                FirstName = "John",
+                LastName = "Doe"
+            };
+
+            var registerResult = await service.RegisterAsync(registerRequest);
+
+            repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
+                    .ReturnsAsync(addedUser!);
+
+            repoMock.Setup(r => r.SaveChangesAsync())
+                    .Returns(Task.CompletedTask);
+
+            var loginRequest = new LoginRequestDto
+            {
+                Email = "user@test.com",
+                Password = "CorrectPassword123!"
+            };
+
+            var result = await service.LoginAsync(loginRequest);
+
+            Assert.NotNull(result);
+            Assert.False(string.IsNullOrWhiteSpace(result.Token));
+            Assert.Equal("user@test.com", result.Profile.Email);
+
+            repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
         }
 
         #endregion
