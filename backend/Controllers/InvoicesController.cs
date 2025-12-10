@@ -1,4 +1,5 @@
-﻿using backend.Infrastructure;
+﻿using backend.DTOs.Invoice;
+using backend.Infrastructure;
 using backend.Models.Common;
 using backend.Models.Invoice;
 using backend.Models.Invoices;
@@ -61,4 +62,41 @@ public class InvoicesController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPost("{id:int}/export")]
+    [ProducesResponseType(typeof(InvoiceExportLinkDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ExportUrl(int id)
+    {
+        var userId = User.GetUserId();
+
+        var invoice = await _service.GetInvoiceAsync(userId, id);
+        if (invoice == null)
+            return NotFound();
+
+        var baseUrl = $"{Request.Scheme}://{Request.Host}";
+        var downloadUrl = $"{baseUrl}/api/invoices/{id}/export-file";
+
+        var dto = new InvoiceExportLinkDto
+        {
+            DownloadUrl = downloadUrl
+        };
+
+        return Ok(dto);
+    }
+
+    [HttpGet("{id:int}/export-file")]
+    [ProducesResponseType(typeof(FileContentResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Download(int id)
+    {
+        var userId = User.GetUserId();
+
+        var export = await _service.GetInvoiceExportAsync(userId, id);
+        if (export == null)
+            return NotFound();
+
+        return File(export.Content, export.ContentType, export.FileName);
+    }
+
 }

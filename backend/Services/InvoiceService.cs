@@ -1,12 +1,14 @@
 ﻿using backend.Models.Common;
 using backend.Models.Invoice;
 using backend.Models.Invoices;
+using backend.PDF;
 using backend.Repositories;
 using backend.Services.Abstraction;
 using database;
 using database.Models;
 using database.Models.Enums;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
 
 namespace backend.Services;
 
@@ -385,4 +387,30 @@ public class InvoiceService : IInvoiceService
                 }).ToList()
         };
     }
+
+    public async Task<InvoiceExportResult?> GetInvoiceExportAsync(int userId, int id)
+    {
+        var invoice = await _invoiceRepo.GetByIdAsync(userId, id);
+        if (invoice == null)
+            return null;
+
+        var dto = MapToDetailDto(invoice);
+
+        var document = new InvoiceDocument(dto);
+        var pdfBytes = document.GeneratePdf();
+
+        var safeNumber = string.IsNullOrWhiteSpace(dto.NumberFull)
+            ? id.ToString()
+            : dto.NumberFull.Replace("/", "-")
+                            .Replace("\\", "-")
+                            .Replace(" ", "_");
+
+        return new InvoiceExportResult
+        {
+            FileName = $"invoice-{safeNumber}.pdf",
+            ContentType = "application/pdf",
+            Content = pdfBytes
+        };
+    }
+
 }

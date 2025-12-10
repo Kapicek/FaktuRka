@@ -7,6 +7,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using QuestPDF.Infrastructure;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,7 +30,7 @@ builder.Services.AddSwaggerGen(c =>
         Name = "Authorization",
         In = ParameterLocation.Header,
         Type = SecuritySchemeType.Http,
-        Description = "Zadej JWT token ve formátu: Bearer {token}",
+        Description = "Zadej JWT token ve formï¿½tu: Bearer {token}",
         Reference = new OpenApiReference
         {
             Id = "Bearer",
@@ -57,6 +59,7 @@ var allowedOrigins = new[]
     "http://localhost:5173",
     "https://localhost:5173"
 };
+QuestPDF.Settings.License = LicenseType.Community;
 
 
 builder.Services
