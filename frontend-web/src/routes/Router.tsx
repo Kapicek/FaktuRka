@@ -3,6 +3,7 @@ import App from "../App";
 import Layout from "../layouts/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import SignIn from "../pages/SignIn";
+import SignUp from "../pages/SignUp";
 import Home from "../pages/Home";
 import Customers from "../pages/Customers";
 import Invoices from "../pages/Invoices";
@@ -16,6 +17,7 @@ export const router = createBrowserRouter([
         element: <App />,
         children: [
             { path: "/sign-in", element: <SignIn /> },
+            { path: "/sign-up", element: <SignUp /> },
             {
                 path: "/",
                 element: <ProtectedRoute />,

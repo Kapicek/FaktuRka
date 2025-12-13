@@ -7,11 +7,42 @@ export type InvoiceListItem = {
     id: number;
     numberFull: string;
     status: number;
-    issueDate: string;     // ISO date string
-    dueDate: string;       // ISO date string
+    issueDate: string; // ISO date string
+    dueDate: string; // ISO date string
     customerName: string;
     total: number;
     currency: string;
+};
+
+// odpověď na GET /api/Invoices s paginací
+export type InvoiceListResponse = {
+    items: InvoiceListItem[];
+    totalCount: number;
+};
+
+// query parametry dle Swaggeru
+export type ListInvoicesArgs = {
+    customerId?: number;
+    status?: number;
+
+    issueDateFrom?: string; // "YYYY-MM-DD"
+    issueDateTo?: string;
+
+    dueDateFrom?: string;
+    dueDateTo?: string;
+
+    number?: string;
+    customerName?: string;
+    currency?: string;
+
+    totalMin?: number;
+    totalMax?: number;
+
+    sortBy?: string;
+    desc?: boolean;
+
+    page?: number;
+    pageSize?: number;
 };
 
 // položka faktury v detailu
@@ -95,15 +126,37 @@ export type InvoiceCreateAttributes = {
 export const invoicesApi = baseApi.injectEndpoints({
     endpoints: (build) => ({
         // ===== List invoices =====
-        listInvoices: build.query<InvoiceListItem[], void>({
-            query: () => ({
-                url: "/Invoices",
-                method: "GET",
-            }),
+        listInvoices: build.query<InvoiceListResponse, ListInvoicesArgs | void>({
+            query: (args) => {
+                const a = args ?? {};
+
+                return {
+                    url: "/Invoices",
+                    method: "GET",
+                    params: {
+                        // záměrně PascalCase dle Swaggeru (bezpečné i pro .NET binder)
+                        CustomerId: a.customerId,
+                        Status: a.status,
+                        IssueDateFrom: a.issueDateFrom,
+                        IssueDateTo: a.issueDateTo,
+                        DueDateFrom: a.dueDateFrom,
+                        DueDateTo: a.dueDateTo,
+                        Number: a.number,
+                        CustomerName: a.customerName,
+                        Currency: a.currency,
+                        TotalMin: a.totalMin,
+                        TotalMax: a.totalMax,
+                        SortBy: a.sortBy,
+                        Desc: a.desc,
+                        Page: a.page,
+                        PageSize: a.pageSize,
+                    },
+                };
+            },
             providesTags: (result) =>
                 result
                     ? [
-                        ...result.map((inv) => ({
+                        ...result.items.map((inv) => ({
                             type: "Invoice" as const,
                             id: inv.id,
                         })),
@@ -132,6 +185,31 @@ export const invoicesApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: [{ type: "Invoice", id: "LIST" }],
         }),
+        // ===== Export invoice =====
+        exportInvoice: build.mutation<void, number | string>({
+            query: (id) => ({
+                url: `/Invoices/${id}/export`,
+                method: "POST",
+            }),
+        }),
+        downloadInvoiceFile: build.mutation<Blob, number | string>({
+            query: (id) => ({
+                url: `/Invoices/${id}/export-file`,
+                method: "GET",
+                responseHandler: (response) => response.blob(),
+            }),
+        }),
+        // ===== Delete invoice =====
+        deleteInvoice: build.mutation<void, number | string>({
+            query: (id) => ({
+                url: `/Invoices/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: (_res, _err, id) => [
+                { type: "Invoice" as const, id },
+                { type: "Invoice" as const, id: "LIST" },
+            ],
+        }),
     }),
     overrideExisting: false,
 });
@@ -140,4 +218,7 @@ export const {
     useListInvoicesQuery,
     useGetInvoiceQuery,
     useCreateInvoiceMutation,
+    useExportInvoiceMutation,
+    useDownloadInvoiceFileMutation,
+    useDeleteInvoiceMutation,
 } = invoicesApi;
