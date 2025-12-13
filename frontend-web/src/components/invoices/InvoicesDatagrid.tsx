@@ -1,9 +1,10 @@
 import Box from "@mui/material/Box";
-import { Chip, Stack, type ChipProps, Tooltip } from "@mui/material";
+import { Chip, Stack, type ChipProps, Tooltip, Autocomplete, Grid, TextField, Typography } from "@mui/material";
 import {
     DataGrid,
     GridActionsCellItem,
     type GridColDef,
+    type GridSortModel,
 } from "@mui/x-data-grid";
 
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -24,6 +25,9 @@ import React from "react";
 import { Delete, Edit, FileDownloadRounded, ContentCopy } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 import ConfirmDialog from "../dialogs/ConfirmDialog";
+import type { Customer } from "../../features/customers/customersApi";
+import { useListCustomersQuery } from "../../features/customers/customersApi";
+import type { ListInvoicesArgs } from "../../features/invoices/invoicesApi";
 
 export enum InvoiceStatus {
     Draft = 0,
@@ -74,13 +78,29 @@ const STATUS_CONFIG: Record<InvoiceStatus, StatusConfig> = {
 };
 
 export default function InvoicesDatagrid() {
-    const { isLoading, data } = useListInvoicesQuery();
+    const [filters, setFilters] = React.useState<{ status?: InvoiceStatus; customerId?: number }>({});
+    const [paginationModel, setPaginationModel] = React.useState({ page: 0, pageSize: 25 });
+    const [sortModel, setSortModel] = React.useState<GridSortModel>([]);
+
+    const queryArgs: ListInvoicesArgs = {
+        status: filters.status,
+        customerId: filters.customerId,
+        page: paginationModel.page + 1,
+        pageSize: paginationModel.pageSize,
+        sortBy: sortModel[0]?.field,
+        desc: sortModel[0]?.sort === "desc",
+    };
+
+    const { isLoading, data } = useListInvoicesQuery(queryArgs);
     const [deleteInvoice] = useDeleteInvoiceMutation();
     const [exportInvoice] = useExportInvoiceMutation();
     const [downloadInvoiceFile] = useDownloadInvoiceFileMutation();
     const [selectedInvoice, setSelectedInvoice] = React.useState<InvoiceListItem | null>(null);
     const navigate = useNavigate();
     const invoices = data?.items ?? [];
+    const rowCount = data?.totalCount ?? 0;
+
+    const { data: customers = [], isLoading: customersLoading } = useListCustomersQuery();
 
     const handleDeleteClick = React.useCallback((invoice: InvoiceListItem) => {
         setSelectedInvoice(invoice);
@@ -213,21 +233,144 @@ export default function InvoicesDatagrid() {
     ], [handleDeleteClick, handleExportClick, handleDuplicateClick]);
 
     return (
-        <Box sx={{ flexGrow: 1, width: "100%", maxHeight: "100%", overflow: "auto" }}>
+        <Box
+            sx={{
+                flexGrow: 1,
+                width: "100%",
+                display: "flex",
+                flexDirection: "column",
+                minHeight: 0,
+            }}
+        >
+            <Stack
+                direction="row"
+                spacing={2}
+                mb={2}
+                flexShrink={0}
+            >
+                <Grid container spacing={2} sx={{ flex: 1 }}>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Stack spacing={1}>
+                            <Autocomplete<
+                                { value: InvoiceStatus; label: string },
+                                false,
+                                false,
+                                false
+                            >
+                                options={Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({
+                                    value: Number(key) as InvoiceStatus,
+                                    label: cfg.label,
+                                }))}
+                                loading={false}
+                                value={
+                                    filters.status !== undefined
+                                        ? {
+                                            value: filters.status,
+                                            label: STATUS_CONFIG[filters.status].label,
+                                        }
+                                        : null
+                                }
+                                onChange={(_, newValue) => {
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        status: newValue?.value,
+                                    }));
+                                    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+                                }}
+                                getOptionLabel={(option) => option.label}
+                                isOptionEqualToValue={(option, value) =>
+                                    option.value === value.value
+                                }
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        placeholder="Status"
+                                        size="small"
+                                        sx={{ backgroundColor: "background.default" }}
+                                    />
+                                )}
+                                renderOption={(props, option) => {
+                                    const cfg = STATUS_CONFIG[option.value];
+                                    return (
+                                        <li {...props} key={option.value}>
+                                            <Chip
+                                                sx={{ px: 1 }}
+                                                size="small"
+                                                variant="outlined"
+                                                label={cfg.label}
+                                                color={cfg.color}
+                                                icon={cfg.icon}
+                                            />
+                                        </li>
+                                    );
+                                }}
+                                renderTags={(value, getTagProps) =>
+                                    value.map((option, index) => {
+                                        const cfg = STATUS_CONFIG[option.value];
+                                        return (
+                                            <Chip
+                                                {...getTagProps({ index })}
+                                                key={option.value}
+                                                size="small"
+                                                variant="outlined"
+                                                label={cfg.label}
+                                                color={cfg.color}
+                                                icon={cfg.icon}
+                                            />
+                                        );
+                                    })
+                                }
+                                clearOnEscape
+                            />
+                        </Stack>
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Stack spacing={1}>
+                            <Autocomplete<Customer, false, false, false>
+                                options={customers}
+                                loading={customersLoading}
+                                getOptionLabel={(option) => option.name ?? `#${option.id}`}
+                                value={
+                                    filters.customerId
+                                        ? customers.find((c) => c.id === filters.customerId) ?? null
+                                        : null
+                                }
+                                onChange={(_, newValue) => {
+                                    setFilters((prev) => ({
+                                        ...prev,
+                                        customerId: newValue?.id,
+                                    }));
+                                    setPaginationModel((prev) => ({ ...prev, page: 0 }));
+                                }}
+                                renderInput={(params) => (
+                                    <TextField
+                                        {...params}
+                                        placeholder="Customer"
+                                        size="small"
+                                        sx={{ backgroundColor: "background.default" }}
+                                    />
+                                )}
+                                clearOnEscape
+                            />
+                        </Stack>
+                    </Grid>
+                </Grid>
+            </Stack>
             <DataGrid
                 rows={invoices}
                 loading={isLoading}
                 columns={columns}
-                initialState={{
-                    pagination: {
-                        paginationModel: {
-                            pageSize: 100,
-                        },
-                    },
-                }}
-                pageSizeOptions={[10]}
+                sortingMode="server"
+                sortModel={sortModel}
+                onSortModelChange={(model) => setSortModel(model)}
+                paginationMode="server"
+                rowCount={rowCount}
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
+                pageSizeOptions={[10, 25, 50]}
                 checkboxSelection
                 disableRowSelectionOnClick
+                sx={{ flex: 1 }}
             />
             <ConfirmDialog
                 open={Boolean(selectedInvoice)}
