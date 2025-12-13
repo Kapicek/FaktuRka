@@ -6,10 +6,10 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using QuestPDF.Infrastructure;
+using System.Net;
 using System.Security.Claims;
 using System.Text;
-using QuestPDF.Infrastructure;
-
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -97,6 +97,7 @@ builder.Services.AddScoped<IInvoiceRepository, InvoiceRepository>();
 builder.Services.AddScoped<IInvoiceSequenceRepository, InvoiceSequenceRepository>();
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddHttpClient<IAresService, AresService>();
 

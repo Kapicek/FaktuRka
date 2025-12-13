@@ -1,5 +1,6 @@
 ﻿using backend.DTOs.Auth;
 using backend.Services.Abstraction;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 [ApiController]
@@ -68,5 +69,18 @@ public class AuthController : ControllerBase
         {
             return Unauthorized(ex.Message);
         }
+    }
+
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ForgotPassword(
+    [FromBody] ForgotPasswordRequestDto request)
+    {
+        await _authService.ForgotPasswordAsync(request.Email);
+
+        return Ok(new
+        {
+            message = "If the account exists, a new password has been sent to the email address."
+        });
     }
 }

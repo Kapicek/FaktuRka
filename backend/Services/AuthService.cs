@@ -11,10 +11,12 @@ using System.Security.Cryptography;
 using System.Text;
 
 namespace backend.Services;
+
 public class AuthService : IAuthService
 {
     private readonly IUserRepository _userRepository;
     private readonly IConfiguration _configuration;
+    private readonly IEmailService _emailService;
 
     // Parametry pro hashování hesel
     // Password hash je PBKDF2 (Rfc2898DeriveBytes) s HMAC-SHA256,
@@ -24,10 +26,11 @@ public class AuthService : IAuthService
     private const int PasswordKeySize = 32;         // 32 bytes = 256 bit
     private const int PasswordIterations = 100_000;
 
-    public AuthService(IUserRepository userRepository, IConfiguration configuration)
+    public AuthService(IUserRepository userRepository, IConfiguration configuration, IEmailService emailService)
     {
         _userRepository = userRepository;
         _configuration = configuration;
+        _emailService = emailService;
     }
 
     // tohle si tu psal Petr - idk proč to je tu a proč to je virtual
@@ -191,11 +194,70 @@ public class AuthService : IAuthService
         if (!VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt))
             throw new UnauthorizedAccessException("Invalid credentials.");
 
-        // aktualizace UpdatedAt
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await _userRepository.SaveChangesAsync();
 
         return GenerateAuthResult(user);
+    }
+    private static string GeneratePassword(int length = 12)
+    {
+        const string chars =
+            "ABCDEFGHJKLMNPQRSTUVWXYZ" +
+            "abcdefghijkmnopqrstuvwxyz" +
+            "23456789" +
+            "!@#$%";
+
+        using var rng = RandomNumberGenerator.Create();
+        var bytes = new byte[length];
+        rng.GetBytes(bytes);
+
+        var result = new char[length];
+        for (int i = 0; i < length; i++)
+            result[i] = chars[bytes[i] % chars.Length];
+
+        return new string(result);
+    }
+    public async Task ForgotPasswordAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return;
+
+        var normalizedEmail = email.Trim().ToLowerInvariant();
+
+        var user = await _userRepository.GetByEmailAsync(normalizedEmail);
+
+        if (user == null || string.IsNullOrWhiteSpace(user.Email))
+            return;
+
+        var newPassword = GeneratePassword();
+
+        var (hash, salt) = HashPassword(newPassword);
+
+        user.PasswordHash = hash;
+        user.PasswordSalt = salt;
+
+        if (string.IsNullOrWhiteSpace(user.AuthProvider))
+            user.AuthProvider = "Local";
+        else if (!user.AuthProvider.Contains("Local"))
+            user.AuthProvider += ",Local";
+
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _userRepository.SaveChangesAsync();
+
+        await _emailService.SendAsync(
+            user.Email,
+            "Obnova hesla – Fakturka",
+    $@"Dobrý den,
+
+bylo Vám vygenerováno nové přihlašovací heslo:
+
+{newPassword}
+
+Po přihlášení doporučujeme heslo okamžitě změnit.
+
+Fakturka"
+        );
     }
 
     #region helpers
