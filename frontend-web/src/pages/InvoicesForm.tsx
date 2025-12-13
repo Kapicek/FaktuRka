@@ -78,11 +78,21 @@ const unitOptions: UnitOption[] = [
 const invoiceItemSchema = z.object({
     name: z.string().min(1, "Item name is required"),
     description: z.string().optional(),
-    quantity: z.coerce.number().positive("Quantity must be greater than 0"),
+    quantity: z
+        .coerce.number()
+        .min(0.0001, "Quantity must be at least 0.0001")
+        .max(999999999, "Quantity must be 999999999 or less"),
     unit: z.string().min(1, "Unit is required"),
-    unitPrice: z.coerce.number().nonnegative("Unit price must be >= 0"),
+    unitPrice: z
+        .coerce.number()
+        .min(0, "Unit price must be at least 0")
+        .max(999999999, "Unit price must be 999999999 or less"),
     vatRate: z.coerce.number().min(0).max(100, "VAT must be between 0 and 100"),
-    discount: z.coerce.number().min(0).max(100).optional(),
+    discount: z
+        .coerce.number()
+        .min(0, "Discount must be at least 0")
+        .max(999999999, "Discount must be 999999999 or less")
+        .optional(),
 });
 
 const invoiceSchema = z.object({
@@ -343,9 +353,9 @@ const InvoicesForm: React.FC = () => {
                                     <Grid container sx={{ flex: 1 }} spacing={2}>
                                         <Grid size={{ xs: 12, sm: 12, md: 4 }}>
                                             <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                                <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                                    Issue date
-                                                </Typography>
+                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                                Issue date *
+                                            </Typography>
                                                 <Controller
                                                     name="issueDate"
                                                     control={control}
@@ -370,9 +380,9 @@ const InvoicesForm: React.FC = () => {
                                         </Grid>
                                         <Grid size={{ xs: 12, sm: 12, md: 4 }}>
                                             <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                                <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                                    Due date
-                                                </Typography>
+                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                                Due date *
+                                            </Typography>
                                                 <Controller
                                                     name="dueDate"
                                                     control={control}
@@ -546,7 +556,7 @@ const InvoicesForm: React.FC = () => {
                         <Stack direction="column" spacing={2} sx={{ flex: 1 }}>
                             <Stack direction="row" justifyContent={"space-between"}>
                                 <Typography variant="subtitle1" fontWeight={800}>
-                                    Invoice items
+                                    Invoice items *
                                 </Typography>
                                 <Button
                                     startIcon={<AddRounded />}
@@ -578,7 +588,7 @@ const InvoicesForm: React.FC = () => {
                                                 <Grid size={{ xs: 12, sm: 12, md: 3 }}>
                                                     <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
                                                         <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                                            Name
+                                                            Name *
                                                         </Typography>
                                                         <Controller
                                                             name={`items.${index}.name`}
@@ -598,7 +608,7 @@ const InvoicesForm: React.FC = () => {
                                                 <Grid size={{ xs: 12, sm: 12, md: 1 }}>
                                                     <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
                                                         <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                                            Quantity
+                                                            Quantity *
                                                         </Typography>
                                                         <Controller
                                                             name={`items.${index}.quantity`}
@@ -618,7 +628,7 @@ const InvoicesForm: React.FC = () => {
                                                 <Grid size={{ xs: 12, sm: 12, md: 2 }}>
                                                     <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
                                                         <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                                            Unit
+                                                            Unit *
                                                         </Typography>
                                                         <Controller
                                                             name={`items.${index}.unit`}
@@ -647,7 +657,7 @@ const InvoicesForm: React.FC = () => {
                                                 <Grid size={{ xs: 12, sm: 12, md: 2 }}>
                                                     <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
                                                         <Typography variant="body2" color="textSecondary" lineHeight={1}>
-                                                            Unit price
+                                                            Unit price *
                                                         </Typography>
                                                         <Controller
                                                             name={`items.${index}.unitPrice`}
