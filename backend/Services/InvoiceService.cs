@@ -413,4 +413,98 @@ public class InvoiceService : IInvoiceService
         };
     }
 
+    public async Task<InvoiceDetailDto?> UpdateInvoiceAsync(int userId, int id, InvoiceUpdateRequest request)
+    {
+        var invoice = await _invoiceRepo.GetByIdAsync(userId, id);
+        if (invoice == null || invoice.DeletedAt != null)
+            return null;
+
+        if (invoice.Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be edited.");
+
+        invoice.IssueDate = request.IssueDate;
+        invoice.DueDate = request.DueDate;
+        invoice.SupplyDate = request.SupplyDate;
+
+        invoice.Currency = request.Currency;
+        invoice.TaxMode = request.TaxMode;
+        invoice.PaymentMethod = request.PaymentMethod;
+
+        invoice.NotePublic = request.NotePublic;
+        invoice.NoteInternal = request.NoteInternal;
+
+        if (invoice.CustomerId != request.CustomerId)
+        {
+            var customer = await _customerRepo.GetByIdAsync(userId, request.CustomerId)
+                ?? throw new ArgumentException("Customer not found.");
+
+            invoice.CustomerId = customer.Id;
+            invoice.Customer = customer;
+
+            invoice.BillingName = customer.Name;
+            invoice.BillingIco = customer.Ico;
+            invoice.BillingDic = customer.Dic;
+
+            if (customer.Address != null)
+            {
+                invoice.BillingAddress1 = customer.Address.AddressLine1;
+                invoice.BillingAddress2 = customer.Address.AddressLine2;
+                invoice.BillingCity = customer.Address.City;
+                invoice.BillingZip = customer.Address.Zip;
+                invoice.BillingCountry = customer.Address.CountryCode;
+            }
+        }
+
+        invoice.Items.Clear();
+        var orderNo = 1;
+        foreach (var itemReq in request.Items)
+        {
+            var item = new InvoiceItem
+            {
+                OrderNo = orderNo++,
+                Name = itemReq.Name,
+                Description = itemReq.Description,
+                Quantity = itemReq.Quantity,
+                Unit = itemReq.Unit,
+                UnitPrice = itemReq.UnitPrice,
+                VatRate = itemReq.VatRate,
+                Discount = itemReq.Discount
+            };
+
+            item.LineSubtotal = itemReq.Quantity * itemReq.UnitPrice - itemReq.Discount;
+            var vatRate = itemReq.VatRate ?? invoice.VatRateDefault ?? 0m;
+            item.LineVat = invoice.TaxMode == TaxMode.VatExcluded
+                ? Math.Round(item.LineSubtotal * vatRate / 100m, 2)
+                : 0m;
+            item.LineTotal = item.LineSubtotal + item.LineVat;
+
+            invoice.Items.Add(item);
+        }
+
+        invoice.Subtotal = invoice.Items.Sum(i => i.LineSubtotal);
+        invoice.VatAmount = invoice.Items.Sum(i => i.LineVat);
+        invoice.Total = invoice.Items.Sum(i => i.LineTotal);
+        invoice.DiscountTotal = request.Items.Sum(i => i.Discount);
+
+        invoice.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _invoiceRepo.SaveChangesAsync();
+
+        return await GetInvoiceAsync(userId, id);
+    }
+
+    public async Task DeleteInvoiceAsync(int userId, int id)
+    {
+        var invoice = await _invoiceRepo.GetByIdAsync(userId, id);
+        if (invoice == null || invoice.DeletedAt != null)
+            throw new KeyNotFoundException("Invoice not found.");
+
+        if (invoice.Status != InvoiceStatus.Draft)
+            throw new InvalidOperationException("Only draft invoices can be deleted.");
+
+        invoice.DeletedAt = DateTimeOffset.UtcNow;
+        invoice.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _invoiceRepo.SaveChangesAsync();
+    }
 }

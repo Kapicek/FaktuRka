@@ -99,4 +99,48 @@ public class InvoicesController : ControllerBase
         return File(export.Content, export.ContentType, export.FileName);
     }
 
+    [HttpPut("{id:int}")]
+    [ProducesResponseType(typeof(InvoiceDetailDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Update(int id, [FromBody] InvoiceUpdateRequest request)
+    {
+        var userId = User.GetUserId();
+
+        try
+        {
+            var updated = await _service.UpdateInvoiceAsync(userId, id, request);
+            if (updated == null)
+                return NotFound();
+
+            return Ok(updated);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [HttpDelete("{id:int}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> Delete(int id)
+    {
+        var userId = User.GetUserId();
+
+        try
+        {
+            await _service.DeleteInvoiceAsync(userId, id);
+            return NoContent();
+        }
+        catch (KeyNotFoundException)
+        {
+            return NotFound();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+
 }

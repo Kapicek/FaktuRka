@@ -48,6 +48,9 @@ public class CustomerService : ICustomerService
                 throw new InvalidOperationException("Customer with this IC already exists.");
         }
 
+        if (!string.IsNullOrWhiteSpace(request.CountryCode) && request.CountryCode.Trim().Length > 2)
+            throw new ArgumentException("Country Code must be max 2 characters.");
+
         var customer = new Customer
         {
             UserId = userId,
