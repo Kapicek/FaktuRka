@@ -112,15 +112,7 @@ const InvoicesDashboardCharts = () => {
     ].filter((d) => d.value > 0); // prázdné statusy vyhodíme, ať není koláč flekatý nulami
 
     const issuedInvoices = invoices.filter((inv) => inv.status !== InvoiceStatus.Paid);
-    const issuedAmount = issuedInvoices.reduce(
-        (sum, inv) => sum + convertAmount(inv.total ?? 0, inv.currency, preferredCurrency),
-        0
-    );
     const paidInvoices = invoices.filter((inv) => inv.status === InvoiceStatus.Paid);
-    const paidAmount = paidInvoices.reduce(
-        (sum, inv) => sum + convertAmount(inv.total ?? 0, inv.currency, preferredCurrency),
-        0
-    );
 
     const issuedCount = issuedInvoices.length;
     const paidCount = paidInvoices.length;
@@ -175,12 +167,12 @@ const InvoicesDashboardCharts = () => {
                 <Card sx={{ height: "100%", pt: 2 }} variant="outlined">
                     <Stack>
                         <Typography variant="body1" sx={{ px: 2 }}>
-                            Issued vs. Paid:
+                            Issued / Paid:
                         </Typography>
 
                         <Box sx={{ width: "100%", height: 100, top: 0 }}>
                             <BarChart
-                                borderRadius={3}
+                                borderRadius={4}
                                 yAxis={[
                                     {
                                         scaleType: "band",
