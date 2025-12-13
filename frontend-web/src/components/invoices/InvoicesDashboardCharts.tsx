@@ -1,12 +1,16 @@
 import React from "react";
-import { Box, Card, CardContent, Grid, Stack, Typography } from "@mui/material";
+import { Autocomplete, Box, Card, CardContent, Grid, Stack, TextField, Typography } from "@mui/material";
+import type { ChipProps } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import type { Theme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { BarChart } from "@mui/x-charts/BarChart";
+import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
 import { useListInvoicesQuery } from "../../features/invoices/invoicesApi";
 import { useSelector } from "react-redux";
 import { selectPreferredCurrency } from "../../features/settings/settingsSlice";
 import { CURRENCY_RATES } from "../../constants/currencies";
+import { STATUS_CONFIG } from "./statusConfig";
 
 // FE kopie backend enumu
 export enum InvoiceStatus {
@@ -30,12 +34,29 @@ const convertAmount = (value: number, fromCurrency: string | undefined, toCurren
     return (value * fromRate) / toRate;
 };
 
+const STATUS_FILTER_OPTIONS = Object.entries(STATUS_CONFIG).map(([key, config]) => ({
+    label: config.label,
+    value: Number(key) as InvoiceStatus,
+    chip: config,
+}));
+
+const getStatusColor = (palette: Theme["palette"], chipColor: ChipProps["color"]) => {
+    if (chipColor === "default" || !chipColor) {
+        return palette.text.secondary;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const colorFromPalette = (palette as any)[chipColor]?.main;
+    return colorFromPalette ?? palette.primary.main;
+};
+
+
 const InvoicesDashboardCharts = () => {
     const theme = useTheme();
     const preferredCurrency = useSelector(selectPreferredCurrency);
 
     const { data } = useListInvoicesQuery();
-    const invoices = data?.items ?? [];
+    const invoicesFromApi = data?.items ?? [];
+    const invoices = invoicesFromApi.length ? invoicesFromApi : [];
 
     // ===== agregace dat =====
     const totalAmount = invoices.reduce(
@@ -121,6 +142,29 @@ const InvoicesDashboardCharts = () => {
         { label: "Issued", value: issuedCount, color: theme.palette.primary.main },
         { label: "Paid", value: paidCount, color: theme.palette.success.main },
     ];
+
+    const [selectedStatus, setSelectedStatus] = React.useState<InvoiceStatus>(InvoiceStatus.Draft);
+    const selectedStatusOption = STATUS_FILTER_OPTIONS.find((opt) => opt.value === selectedStatus);
+    const statusColor = getStatusColor(theme.palette, selectedStatusOption?.chip.color ?? "primary");
+
+    const invoicesByStatus = invoices.filter((inv) => inv.status === selectedStatus);
+    const statusAmount = invoicesByStatus.reduce(
+        (sum, inv) => sum + convertAmount(inv.total ?? 0, inv.currency, preferredCurrency),
+        0
+    );
+
+    const sortedStatusInvoices = [...invoicesByStatus].sort(
+        (a, b) => new Date(a.issueDate).getTime() - new Date(b.issueDate).getTime()
+    );
+
+    const statusAmounts = sortedStatusInvoices.map((inv) =>
+        convertAmount(inv.total ?? 0, inv.currency, preferredCurrency)
+    );
+    const statusSparklineData =
+        statusAmounts.length >= 2
+            ? statusAmounts
+            : [statusAmounts[0] ?? 0, statusAmounts[0] ?? 0];
+    const statusCount = invoicesByStatus.length;
 
     return (
         <Grid container spacing={2}>
@@ -209,7 +253,82 @@ const InvoicesDashboardCharts = () => {
             </Grid>
             <Grid size={{ xs: 12, md: 4 }}>
                 <Card sx={{ height: "100%" }} variant="outlined">
-                    {/* třetí panel */}
+                    <CardContent>
+                        <Stack>
+                            <Stack direction="row" spacing={2} justifyContent="space-between">
+                                <Typography variant="body1">
+                                    Status:
+                                </Typography>
+                                <Autocomplete<typeof STATUS_FILTER_OPTIONS[number], false, true, false>
+                                    size="small"
+                                    options={STATUS_FILTER_OPTIONS}
+                                    disableClearable
+                                    value={selectedStatusOption ?? undefined}
+                                    onChange={(_, newValue) => {
+                                        if (newValue) {
+                                            setSelectedStatus(newValue.value);
+                                        }
+                                    }}
+                                    getOptionLabel={(option) => option.label}
+                                    renderInput={(params) => (
+                                        <TextField {...params} placeholder="Status" size="small" />
+                                    )}
+                                    renderOption={(props, option) => {
+                                        const Icon = option.chip.icon;
+                                        return (
+                                            <li {...props} key={option.value}>
+                                                <Stack direction="row" spacing={1} alignItems="center">
+                                                    <Icon
+                                                        fontSize="small"
+                                                        color={
+                                                            option.chip.color === "default"
+                                                                ? "inherit"
+                                                                : option.chip.color
+                                                        }
+                                                    />
+                                                    <Typography variant="body2">{option.label}</Typography>
+                                                </Stack>
+                                            </li>
+                                        );
+                                    }}
+                                    sx={{ minWidth: 140 }}
+                                />
+                            </Stack>
+                            <Stack direction="row" spacing={2} alignItems="center" justifyContent="space-between">
+                                <Stack>
+                                    <Typography variant="body2" color="text.secondary">
+                                        Total amount
+                                    </Typography>
+                                    <Typography variant="subtitle1" fontWeight={700}>
+                                        {currencyFormatter.format(statusAmount)}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        {statusCount} {statusCount === 1 ? "invoice" : "invoices"}
+                                    </Typography>
+                                </Stack>
+                                <Box sx={{ flex: 1, width: "100%", height: 80 }}>
+                                    <SparkLineChart
+                                        data={statusSparklineData}
+                                        height={90}
+                                        showTooltip
+                                        showHighlight
+                                        area
+                                        baseline="min"
+                                        color={statusColor}
+                                        curve="linear"
+                                        margin={{ top: 12, bottom: 6, left: 6, right: 0 }}
+                                        slotProps={{
+                                            area: { style: { fillOpacity: 0.15 } },
+                                            line: { style: { strokeWidth: 3 } },
+                                        }}
+                                        valueFormatter={(value) =>
+                                            typeof value === "number" ? currencyFormatter.format(value) : ""
+                                        }
+                                    />
+                                </Box>
+                            </Stack>
+                        </Stack>
+                    </CardContent>
                 </Card>
             </Grid>
         </Grid>
