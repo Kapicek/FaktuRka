@@ -20,7 +20,7 @@ import {
     ArrowBackRounded,
     NoteAddRounded,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -28,7 +28,7 @@ import {
     useFieldArray,
     Controller,
 } from "react-hook-form";
-import { useCreateInvoiceMutation } from "../features/invoices/invoicesApi";
+import { useCreateInvoiceMutation, useGetInvoiceQuery } from "../features/invoices/invoicesApi";
 import {
     useListCustomersQuery,
     type Customer,
@@ -109,12 +109,21 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const InvoicesForm: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const duplicateInvoiceId =
+        (location.state as { duplicateInvoiceId?: number } | undefined)
+            ?.duplicateInvoiceId;
     const { colorScheme } = useColorScheme();
     const [createInvoice] = useCreateInvoiceMutation();
+    const { data: duplicateInvoice, isFetching: isFetchingDuplicate } = useGetInvoiceQuery(
+        duplicateInvoiceId ?? 0,
+        { skip: !duplicateInvoiceId }
+    );
 
     const {
         handleSubmit,
         control,
+        reset,
         formState: { isSubmitting },
     } = useForm<InvoiceFormValues>({
         resolver: zodResolver(invoiceSchema) as any,
@@ -151,6 +160,40 @@ const InvoicesForm: React.FC = () => {
 
     const { data: customers = [], isLoading: customersLoading } =
         useListCustomersQuery();
+
+    React.useEffect(() => {
+        if (!duplicateInvoice) return;
+        reset({
+            customerId: duplicateInvoice.customerId ?? 0,
+            sequenceId: duplicateInvoice.sequenceId ?? null,
+            issueDate: duplicateInvoice.issueDate,
+            dueDate: duplicateInvoice.dueDate,
+            supplyDate: duplicateInvoice.supplyDate ?? duplicateInvoice.issueDate,
+            currency: duplicateInvoice.currency,
+            taxMode: duplicateInvoice.taxMode,
+            vatRateDefault: duplicateInvoice.vatRateDefault,
+            variableSymbol: duplicateInvoice.variableSymbol ?? "",
+            notePublic: duplicateInvoice.notePublic ?? "",
+            noteInternal: duplicateInvoice.noteInternal ?? "",
+            items: duplicateInvoice.items.map((item) => ({
+                name: item.name,
+                description: item.description ?? "",
+                quantity: item.quantity,
+                unit: item.unit,
+                unitPrice: item.unitPrice,
+                vatRate: item.vatRate,
+                discount: item.discount ?? 0,
+            })),
+        });
+    }, [duplicateInvoice, reset]);
+
+    if (duplicateInvoiceId && isFetchingDuplicate) {
+        return (
+            <Stack direction="column" spacing={2} sx={{ flex: 1, pb: 6 }}>
+                <Typography>Loading invoice data…</Typography>
+            </Stack>
+        );
+    }
 
     const onSubmit = async (values: InvoiceFormValues) => {
         try {

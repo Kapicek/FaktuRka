@@ -21,8 +21,8 @@ import {
     type InvoiceListItem,
 } from "../../features/invoices/invoicesApi";
 import React from "react";
-import { Delete, Edit, FileDownloadRounded } from "@mui/icons-material";
-import { Link } from "react-router-dom";
+import { Delete, Edit, FileDownloadRounded, ContentCopy } from "@mui/icons-material";
+import { Link, useNavigate } from "react-router-dom";
 import ConfirmDialog from "../dialogs/ConfirmDialog";
 
 export enum InvoiceStatus {
@@ -79,6 +79,7 @@ export default function InvoicesDatagrid() {
     const [exportInvoice] = useExportInvoiceMutation();
     const [downloadInvoiceFile] = useDownloadInvoiceFileMutation();
     const [selectedInvoice, setSelectedInvoice] = React.useState<InvoiceListItem | null>(null);
+    const navigate = useNavigate();
     const invoices = data?.items ?? [];
 
     const handleDeleteClick = React.useCallback((invoice: InvoiceListItem) => {
@@ -114,6 +115,10 @@ export default function InvoicesDatagrid() {
             console.error("Failed to export invoice", error);
         }
     }, [exportInvoice, downloadInvoiceFile]);
+
+    const handleDuplicateClick = React.useCallback((invoice: InvoiceListItem) => {
+        navigate("/invoices/new", { state: { duplicateInvoiceId: invoice.id } });
+    }, [navigate]);
 
     const columns = React.useMemo<GridColDef[]>(() => [
         {
@@ -178,18 +183,19 @@ export default function InvoicesDatagrid() {
             cellClassName: 'actions',
             renderCell: (params) => (
                 <Stack direction="row" spacing={0}>
-                    <Tooltip title="Edit">
-                        <GridActionsCellItem
-                            icon={<Edit />}
-                            label="Edit"
-                            color="default"
-                        />
-                    </Tooltip>
                     <Tooltip title="Download pdf">
                         <GridActionsCellItem
                             icon={<FileDownloadRounded />}
                             label="Export pdf"
                             onClick={() => handleExportClick(params.row as InvoiceListItem)}
+                            color="default"
+                        />
+                    </Tooltip>
+                    <Tooltip title="Duplicate">
+                        <GridActionsCellItem
+                            icon={<ContentCopy />}
+                            label="Duplicate"
+                            onClick={() => handleDuplicateClick(params.row as InvoiceListItem)}
                             color="default"
                         />
                     </Tooltip>
@@ -204,7 +210,7 @@ export default function InvoicesDatagrid() {
                 </Stack>
             ),
         },
-    ], [handleDeleteClick, handleExportClick]);
+    ], [handleDeleteClick, handleExportClick, handleDuplicateClick]);
 
     return (
         <Box sx={{ flexGrow: 1, width: "100%", maxHeight: "100%", overflow: "auto" }}>
