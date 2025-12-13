@@ -200,6 +200,15 @@ const CustomersForm: React.FC = () => {
                 addressDisplay: displayLabel,
             });
 
+            const nameInput = [
+                existingCustomer.name?.trim(),
+                existingCustomer.ico ? `(${existingCustomer.ico})` : null,
+            ]
+                .filter(Boolean)
+                .join(" ");
+
+            setSelectedAresOption(null);
+            setAresSearchInput(nameInput);
         }
     }, [existingCustomer, reset]);
 

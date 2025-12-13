@@ -4,6 +4,10 @@ import { baseApi } from "../api/baseApi";
 
 export interface CustomersListQuery extends Record<string, any> {
     search?: string;
+    sortBy?: string;
+    desc?: boolean;
+    page?: number;
+    pageSize?: number;
 }
 
 export type CustomerBaseAttributes = {
@@ -54,10 +58,15 @@ export type AresDetail = {
     [key: string]: any;
 };
 
+export type CustomersListResponse = {
+    items: Customer[];
+    totalCount: number;
+};
+
 export const customersApi = baseApi.injectEndpoints({
     endpoints: (build) => ({
         // ===== List customers =====
-        listCustomers: build.query<Customer[], CustomersListQuery | void>({
+        listCustomers: build.query<CustomersListResponse, CustomersListQuery | void>({
             query: (arg) => {
                 const params: CustomersListQuery | undefined =
                     arg ? (arg as CustomersListQuery) : undefined;
@@ -71,7 +80,7 @@ export const customersApi = baseApi.injectEndpoints({
             providesTags: (result) =>
                 result
                     ? [
-                        ...result.map((c) => ({
+                        ...result.items.map((c) => ({
                             type: "Customer" as const,
                             id: c.id,
                         })),
@@ -155,6 +164,7 @@ export const customersApi = baseApi.injectEndpoints({
 export const {
     useListCustomersQuery,
     useGetCustomerQuery,
+    useLazyGetCustomerQuery,
     useCreateCustomerMutation,
     useUpdateCustomerMutation,
     useDeleteCustomerMutation,

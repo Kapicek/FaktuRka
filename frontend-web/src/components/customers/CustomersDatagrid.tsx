@@ -4,11 +4,13 @@ import {
     DataGrid,
     type GridColDef,
     GridActionsCellItem,
+    type GridSortModel,
 } from "@mui/x-data-grid";
 import React from "react";
 import {
     useListCustomersQuery,
     useDeleteCustomerMutation,
+    useLazyGetCustomerQuery,
     type Customer,
 } from "../../features/customers/customersApi";
 import { Delete, Edit } from "@mui/icons-material";
@@ -16,9 +18,24 @@ import ConfirmDialog from "../dialogs/ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 
 export default function CustomersDatagrid() {
-    const { isLoading, data } = useListCustomersQuery();
+    const [paginationModel, setPaginationModel] = React.useState({ page: 0, pageSize: 10 });
+    const [sortModel, setSortModel] = React.useState<GridSortModel>([]);
+
+    const queryArgs = React.useMemo(
+        () => ({
+            page: paginationModel.page + 1,
+            pageSize: paginationModel.pageSize,
+            sortBy: sortModel[0]?.field,
+            desc: sortModel[0]?.sort === "desc",
+        }),
+        [paginationModel, sortModel]
+    );
+
+    const { isLoading, data } = useListCustomersQuery(queryArgs);
     const [deleteCustomer] = useDeleteCustomerMutation();
-    const customers = data ?? [];
+    const [fetchCustomer] = useLazyGetCustomerQuery();
+    const customers = data?.items ?? [];
+    const rowCount = data?.totalCount ?? 0;
     const navigate = useNavigate();
 
     const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
@@ -72,7 +89,10 @@ export default function CustomersDatagrid() {
                         <GridActionsCellItem
                             icon={<Edit />}
                             label="Edit"
-                            onClick={() => navigate(`/customers/${params.row.id}/update`)}
+                            onClick={() => {
+                                fetchCustomer(params.row.id);
+                                navigate(`/customers/${params.row.id}/update`);
+                            }}
                             color="default"
                         />
                     </Tooltip>
@@ -87,7 +107,7 @@ export default function CustomersDatagrid() {
                 </Stack>
             ),
         },
-    ], [handleDeleteClick, navigate]);
+    ], [handleDeleteClick, navigate, fetchCustomer]);
 
     return (
         <Box sx={{ flexGrow: 1, width: "100%" }}>
@@ -95,14 +115,14 @@ export default function CustomersDatagrid() {
                 rows={customers}
                 loading={isLoading}
                 columns={columns}
-                initialState={{
-                    pagination: {
-                        paginationModel: {
-                            pageSize: 5,
-                        },
-                    },
-                }}
-                pageSizeOptions={[5]}
+                paginationMode="server"
+                paginationModel={paginationModel}
+                onPaginationModelChange={setPaginationModel}
+                rowCount={rowCount}
+                pageSizeOptions={[10, 25, 50]}
+                sortingMode="server"
+                sortModel={sortModel}
+                onSortModelChange={(model) => setSortModel(model)}
                 checkboxSelection
                 disableRowSelectionOnClick
             />
