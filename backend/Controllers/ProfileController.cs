@@ -17,7 +17,7 @@ namespace backend.Controllers
             _userService = userService;
         }
 
-        // GET api/profile/me  -> profil aktuálně přihlášeného uživatele
+        // Profil aktuálně přihlášeného uživatele
         [HttpGet("me")]
         [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetMyProfile()
@@ -31,16 +31,11 @@ namespace backend.Controllers
             return Ok(profile);
         }
 
+        [Authorize(Roles = "Admin")]
         [HttpGet("{userId:int}")]
         [ProducesResponseType(typeof(UserProfileDto), StatusCodes.Status200OK)]
         public async Task<IActionResult> GetById(int userId)
         {
-            // tady by ideálně měl být check na roli admina
-            // např. [Authorize(Roles = "Admin")] nebo manuální kontrola claimu:
-
-            if (!User.IsInRole("Admin"))
-                return Forbid();
-
             var profile = await _userService.GetProfileAsync(userId);
             if (profile == null)
                 return NotFound();

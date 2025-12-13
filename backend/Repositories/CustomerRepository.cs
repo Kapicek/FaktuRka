@@ -58,4 +58,14 @@ public class CustomerRepository : ICustomerRepository
     }
 
     public Task SaveChangesAsync() => _db.SaveChangesAsync();
+    public IQueryable<Customer> Query(int userId)
+    {
+        return _db.Customers
+            .AsNoTracking()
+            .Include(c => c.Address)
+            .Where(c =>
+                c.UserId == userId &&
+                c.DeletedAt == null);
+    }
+
 }

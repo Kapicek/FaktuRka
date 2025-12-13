@@ -1,4 +1,6 @@
 ﻿using backend.Infrastructure;
+using backend.Models.Common;
+using backend.Models.Customers;
 using backend.Services.Abstraction;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,13 +20,14 @@ public class CustomersController : ControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(List<CustomerListItemDto>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetList([FromQuery] string? search)
+    [ProducesResponseType(typeof(PagedResult<CustomerListItemDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetList([FromQuery] CustomerListQuery q)
     {
         var userId = User.GetUserId();
-        var customers = await _service.GetCustomersAsync(userId, search);
-        return Ok(customers);
+        var result = await _service.GetCustomersAsync(userId, q);
+        return Ok(result);
     }
+
 
     [HttpGet("{id:int}")]
     [ProducesResponseType(typeof(CustomerDto), StatusCodes.Status200OK)]
