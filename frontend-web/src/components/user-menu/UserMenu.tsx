@@ -1,12 +1,14 @@
 import { DarkMode, Settings, Logout, Person } from "@mui/icons-material"
 import { Avatar, Button, Divider, FormControlLabel, FormGroup, ListItemIcon, Menu, MenuItem, Stack, Switch, Typography, useColorScheme } from "@mui/material";
 import React from "react"
-import { useDispatch } from "react-redux";
-import { logout } from "../../features/auth/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { logout, selectProfile, selectUser } from "../../features/auth/authSlice";
 
 const UserMenu = () => {
 
     const dispatch = useDispatch();
+    const profile = useSelector(selectProfile);
+    const user = useSelector(selectUser);
 
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
@@ -19,15 +21,22 @@ const UserMenu = () => {
 
     const { setMode, colorScheme } = useColorScheme();
 
+    const displayName = profile?.fullName ?? user?.email ?? "User";
+    const displayEmail = profile?.email ?? user?.email ?? "unknown";
+    const avatarUrl = profile?.avatarUrl ?? undefined;
+    const avatarFallback = displayName?.[0]?.toUpperCase() ?? "U";
+
     return (
         <React.Fragment>
             <Stack direction={"row"}>
                 <Button variant="text" sx={{ textTransform: "none", borderRadius: 2 }} onClick={handleClick}>
                     <Stack direction={"column"} justifyContent={"center"} alignItems={"end"} mr={2}>
-                        <Typography color="text.primary" fontWeight={600} lineHeight={1} variant="body2">Matěj Varga</Typography>
-                        <Typography color="text.secondary" variant="caption">varga.matej@seznam.cz</Typography>
+                        <Typography color="text.primary" fontWeight={600} lineHeight={1} variant="body2">{displayName}</Typography>
+                        <Typography color="text.secondary" variant="caption">{displayEmail}</Typography>
                     </Stack>
-                    <Avatar sx={{ width: 48, height: 48 }}>M</Avatar>
+                    <Avatar sx={{ width: 48, height: 48 }} src={avatarUrl}>
+                        {avatarFallback}
+                    </Avatar>
                 </Button>
             </Stack>
             <Menu

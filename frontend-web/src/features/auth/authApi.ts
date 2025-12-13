@@ -31,12 +31,23 @@ export type GoogleLoginAttributes = {
     idToken: string;
 };
 
+export type UserProfile = {
+    id: number;
+    email: string;
+    fullName: string;
+    companyName?: string | null;
+    ico?: string | null;
+    dic?: string | null;
+    vatPayer?: boolean;
+    avatarUrl?: string | null;
+    roles?: string[];
+};
+
 export type AuthResponse = {
     token: string;
     userId: string | number;
     expiresAt?: string;
-    email?: string;
-    fullName?: string;
+    profile?: UserProfile;
 };
 
 export type ActionResult = {
