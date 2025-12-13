@@ -16,7 +16,8 @@ export enum InvoiceStatus {
 const InvoicesDashboardCharts = () => {
     const theme = useTheme();
 
-    const { data: invoices = [] } = useListInvoicesQuery();
+    const { data } = useListInvoicesQuery();
+    const invoices = data?.items ?? [];
 
     // ===== agregace dat =====
     const totalAmount = invoices.reduce(
@@ -24,7 +25,7 @@ const InvoicesDashboardCharts = () => {
         0
     );
 
-    const totalCount = invoices.length;
+    const totalCount = data?.totalCount ?? invoices.length;
 
     // count per status
     const statusCounts: Record<InvoiceStatus, number> = {

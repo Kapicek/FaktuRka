@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
     Stack,
     TextField,
@@ -6,14 +6,13 @@ import {
     Card,
     CardContent,
     useColorScheme,
-    CardActions,
     Typography,
     Autocomplete,
     Grid,
 } from "@mui/material";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { Controller, useForm, type SubmitHandler } from "react-hook-form";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import {
     useCreateCustomerMutation,
@@ -25,12 +24,6 @@ import {
     type AresDetail,
 } from "../features/customers/customersApi";
 
-import "@geoapify/geocoder-autocomplete/styles/minimal.css";
-import "../styles/geoapify-mui.css";
-import {
-    GeoapifyGeocoderAutocomplete,
-    GeoapifyContext,
-} from "@geoapify/react-geocoder-autocomplete";
 import { ArrowBackRounded, PersonAddAlt1Rounded } from "@mui/icons-material";
 
 /** ====== Zod schema & typy ====== */
@@ -68,39 +61,40 @@ const customerSchema = z.object({
             "ZIP must be 5 digits (e.g. 12345 or 123 45)"
         ),
     countryCode: z.string().trim().optional(),
+    addressDisplay: z.string().trim().optional(),
 });
 
 export type CustomerFormValues = z.infer<typeof customerSchema>;
 
-const GEOAPIFY_API_KEY =
-    (import.meta as any).env?.VITE_GEOAPIFY_API_KEY as string | undefined;
+const formatAddressDisplay = (
+    line1?: string | null,
+    zip?: string | null,
+    city?: string | null
+) => {
+    const cityPart = [zip, city].filter(Boolean).join(" ");
+    return [line1, cityPart].filter(Boolean).join(", ");
+};
 
 const CustomersForm: React.FC = () => {
     const navigate = useNavigate();
     const { pathname } = useLocation();
     const { id } = useParams<{ id: string }>();
-
-    const isCreate = useMemo(() => pathname.includes("new"), [pathname]);
-    const isUpdate = useMemo(
-        () => pathname.includes("update") && !!id,
-        [pathname, id]
-    );
+    const isUpdate = Boolean(id && pathname.includes("update"));
 
     const [createCustomer] = useCreateCustomerMutation();
     const [updateCustomer] = useUpdateCustomerMutation();
 
     const { data: existingCustomer, isLoading: isLoadingExisting } =
-        useGetCustomerQuery(id!, {
+        useGetCustomerQuery(id ?? "", {
             skip: !isUpdate || !id,
         });
 
     const {
         handleSubmit,
-        register,
+        control,
         setValue,
         reset,
         formState: { errors, isSubmitting },
-        watch,
     } = useForm<CustomerFormValues>({
         resolver: zodResolver(customerSchema),
         defaultValues: {
@@ -116,18 +110,14 @@ const CustomersForm: React.FC = () => {
             city: "",
             zip: "",
             countryCode: "CZ",
+            addressDisplay: "",
         },
     });
 
-    const [addressDisplay, setAddressDisplay] = useState("");
     const [aresSearchInput, setAresSearchInput] = useState("");
     const [selectedAresOption, setSelectedAresOption] =
         useState<AresSearchItem | null>(null);
     const { colorScheme } = useColorScheme();
-
-    // hodnoty pro shrink labelů
-    const legalFormValue = watch("legalForm");
-    const dicValue = watch("dic");
 
     /** ====== ARES – search & detail ====== */
 
@@ -175,56 +165,13 @@ const CustomersForm: React.FC = () => {
                 s.pscTxt ??
                 (typeof s.psc === "number" ? String(s.psc).padStart(5, "0") : "");
 
-            if (streetPart) setValue("addressLine1", streetPart);
-            if (city) setValue("city", city);
-            if (zip) setValue("zip", zip);
+            setValue("addressLine1", streetPart || "");
+            setValue("city", city || "");
+            setValue("zip", zip || "");
             setValue("countryCode", "CZ");
 
-            const cityPart = [zip, city].filter(Boolean).join(" ");
-            const label = [streetPart, cityPart].filter(Boolean).join(", ");
-            setAddressDisplay(label);
-        }
-    };
-
-    /** ====== Geoapify – zpracování vybrané adresy ====== */
-
-    const handleAddressSelect = (value: any) => {
-        if (!value) {
-            setAddressDisplay("");
-            setValue("addressLine1", "");
-            setValue("city", "");
-            setValue("zip", "");
-            return;
-        }
-
-        const props = value.properties ?? {};
-
-        const street =
-            props.street ||
-            props.address_line1 ||
-            "";
-        const houseNumber = props.housenumber || "";
-        const city =
-            props.city ||
-            props.town ||
-            props.village ||
-            "";
-        const zip = props.postcode || "";
-        const countryCode = props.country_code
-            ? String(props.country_code).toUpperCase()
-            : undefined;
-
-        const streetPart = [street, houseNumber].filter(Boolean).join(" ");
-        const cityPart = [zip, city].filter(Boolean).join(" ");
-        const label = [streetPart, cityPart].filter(Boolean).join(", ");
-
-        setAddressDisplay(label);
-
-        setValue("addressLine1", streetPart);
-        setValue("city", city);
-        setValue("zip", zip);
-        if (countryCode) {
-            setValue("countryCode", countryCode);
+            const label = formatAddressDisplay(streetPart, zip, city);
+            setValue("addressDisplay", label || streetPart || city || zip || "");
         }
     };
 
@@ -232,6 +179,11 @@ const CustomersForm: React.FC = () => {
 
     useEffect(() => {
         if (existingCustomer) {
+            const displayLabel = formatAddressDisplay(
+                existingCustomer.addressLine1,
+                existingCustomer.zip,
+                existingCustomer.city
+            );
             reset({
                 name: existingCustomer.name ?? "",
                 ico: existingCustomer.ico ?? "",
@@ -245,25 +197,22 @@ const CustomersForm: React.FC = () => {
                 city: existingCustomer.city ?? "",
                 zip: existingCustomer.zip ?? "",
                 countryCode: existingCustomer.countryCode ?? "CZ",
+                addressDisplay: displayLabel,
             });
 
-            const streetPart = existingCustomer.addressLine1 || "";
-            const cityPart = [existingCustomer.zip, existingCustomer.city]
-                .filter(Boolean)
-                .join(" ");
-            const label = [streetPart, cityPart].filter(Boolean).join(", ");
-            setAddressDisplay(label);
         }
     }, [existingCustomer, reset]);
 
     /** ====== Submit ====== */
 
     const onSubmit: SubmitHandler<CustomerFormValues> = async (values) => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { addressDisplay: _addressDisplay, ...payload } = values;
         try {
             if (isUpdate && id) {
-                await updateCustomer({ id, data: values }).unwrap();
+                await updateCustomer({ id, data: payload }).unwrap();
             } else {
-                await createCustomer(values).unwrap();
+                await createCustomer(payload).unwrap();
             }
             navigate("/customers");
         } catch (e) {
@@ -284,7 +233,7 @@ const CustomersForm: React.FC = () => {
                     </Typography>
                     <Button
                         startIcon={<ArrowBackRounded />}
-                        type="submit"
+                        type="button"
                         variant="outlined"
                         disableElevation
                         sx={{ textTransform: "none" }}
@@ -310,8 +259,16 @@ const CustomersForm: React.FC = () => {
                             </Typography>
 
                             {/* Name + ICO držíme jen v RHF, neviditelné */}
-                            <input type="hidden" {...register("name")} />
-                            <input type="hidden" {...register("ico")} />
+                            <Controller
+                                name="name"
+                                control={control}
+                                render={({ field }) => <input type="hidden" {...field} />}
+                            />
+                            <Controller
+                                name="ico"
+                                control={control}
+                                render={({ field }) => <input type="hidden" {...field} />}
+                            />
 
                             {/* ARES search autocomplete */}
                             <Stack direction="row" spacing={2}>
@@ -346,7 +303,7 @@ const CustomersForm: React.FC = () => {
                                                         setValue("city", "");
                                                         setValue("zip", "");
                                                         setValue("countryCode", "");
-                                                        setAddressDisplay("");
+                                                        setValue("addressDisplay", "");
 
                                                         return;
                                                     }
@@ -362,7 +319,8 @@ const CustomersForm: React.FC = () => {
                                                     }
 
                                                     if (selected.fullAddress) {
-                                                        setAddressDisplay(selected.fullAddress);
+                                                        setValue("addressDisplay", selected.fullAddress);
+                                                        setValue("addressLine1", selected.fullAddress);
                                                     }
 
                                                     (async () => {
@@ -393,31 +351,43 @@ const CustomersForm: React.FC = () => {
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 12, md: 4 }}>
                                         <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                            <Typography variant="body2" color="text.secondary" lineHeight={1}>
                                                 VAT ID
                                             </Typography>
-                                            <TextField
-                                                placeholder="VAT Identification Number"
-                                                fullWidth
-                                                {...register("dic")}
-                                                error={!!errors.dic}
-                                                helperText={errors.dic?.message}
-                                                InputLabelProps={{ shrink: !!dicValue }}
+                                            <Controller
+                                                name="dic"
+                                                control={control}
+                                                render={({ field, fieldState }) => (
+                                                    <TextField
+                                                        {...field}
+                                                        placeholder="VAT Identification Number"
+                                                        fullWidth
+                                                        error={!!fieldState.error}
+                                                        helperText={fieldState.error?.message}
+                                                        InputLabelProps={{ shrink: Boolean(field.value) }}
+                                                    />
+                                                )}
                                             />
                                         </Stack>
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 12, md: 3 }}>
                                         <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                            <Typography variant="body2" color="text.secondary" lineHeight={1}>
                                                 Legal form
                                             </Typography>
-                                            <TextField
-                                                placeholder="Legal form Number"
-                                                sx={{ flex: 1 }}
-                                                {...register("legalForm")}
-                                                error={!!errors.legalForm}
-                                                helperText={errors.legalForm?.message}
-                                                InputLabelProps={{ shrink: !!legalFormValue }}
+                                            <Controller
+                                                name="legalForm"
+                                                control={control}
+                                                render={({ field, fieldState }) => (
+                                                    <TextField
+                                                        {...field}
+                                                        placeholder="Legal form Number"
+                                                        sx={{ flex: 1 }}
+                                                        error={!!fieldState.error}
+                                                        helperText={fieldState.error?.message}
+                                                        InputLabelProps={{ shrink: Boolean(field.value) }}
+                                                    />
+                                                )}
                                             />
                                         </Stack>
                                     </Grid>
@@ -444,41 +414,64 @@ const CustomersForm: React.FC = () => {
                                 <Grid container sx={{ flex: 1 }} spacing={2}>
                                     <Grid size={{ xs: 12, sm: 12, md: 5 }}>
                                         <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                            <Typography variant="body2" color="text.secondary" lineHeight={1}>
                                                 Address *
                                             </Typography>
-                                            <TextField
-                                                value={addressDisplay}
-                                                onChange={(e) => setAddressDisplay(e.target.value)}
-                                                placeholder="Schlosshoferstrasse 20,1210 Vienna"
+                                            <Controller
+                                                name="addressDisplay"
+                                                control={control}
+                                                render={({ field, fieldState }) => (
+                                                    <TextField
+                                                        {...field}
+                                                        onChange={(event) => {
+                                                            field.onChange(event);
+                                                            setValue("addressLine1", event.target.value);
+                                                        }}
+                                                        placeholder="Schlosshoferstrasse 20,1210 Vienna"
+                                                        error={!!fieldState.error}
+                                                        helperText={fieldState.error?.message}
+                                                    />
+                                                )}
                                             />
                                         </Stack>
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 12, md: 4 }}>
                                         <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                            <Typography variant="body2" color="text.secondary" lineHeight={1}>
                                                 Email
                                             </Typography>
-                                            <TextField
-                                                sx={{ flex: 1 }}
-                                                {...register("email")}
-                                                error={!!errors.email}
-                                                helperText={errors.email?.message}
-                                                placeholder="example@gmail.com"
+                                            <Controller
+                                                name="email"
+                                                control={control}
+                                                render={({ field, fieldState }) => (
+                                                    <TextField
+                                                        {...field}
+                                                        sx={{ flex: 1 }}
+                                                        error={!!fieldState.error}
+                                                        helperText={fieldState.error?.message}
+                                                        placeholder="example@gmail.com"
+                                                    />
+                                                )}
                                             />
                                         </Stack>
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 12, md: 3 }}>
                                         <Stack direction="column" spacing={1} sx={{ flex: 1 }}>
-                                            <Typography variant="body2" color="textSecondary" lineHeight={1}>
+                                            <Typography variant="body2" color="text.secondary" lineHeight={1}>
                                                 Phone
                                             </Typography>
-                                            <TextField
-                                                sx={{ flex: 1 }}
-                                                {...register("phone")}
-                                                error={!!errors.phone}
-                                                helperText={errors.phone?.message}
-                                                placeholder="+420 123 456 789"
+                                            <Controller
+                                                name="phone"
+                                                control={control}
+                                                render={({ field, fieldState }) => (
+                                                    <TextField
+                                                        {...field}
+                                                        sx={{ flex: 1 }}
+                                                        error={!!fieldState.error}
+                                                        helperText={fieldState.error?.message}
+                                                        placeholder="+420 123 456 789"
+                                                    />
+                                                )}
                                             />
                                         </Stack>
                                     </Grid>
@@ -502,13 +495,19 @@ const CustomersForm: React.FC = () => {
                                 Customer note
                             </Typography>
                             {/* Poznámka */}
-                            <TextField
-                                placeholder="Internal note about the customer"
-                                multiline
-                                minRows={4}
-                                {...register("note")}
-                                error={!!errors.note}
-                                helperText={errors.note?.message}
+                            <Controller
+                                name="note"
+                                control={control}
+                                render={({ field, fieldState }) => (
+                                    <TextField
+                                        {...field}
+                                        placeholder="Internal note about the customer"
+                                        multiline
+                                        minRows={4}
+                                        error={!!fieldState.error}
+                                        helperText={fieldState.error?.message}
+                                    />
+                                )}
                             />
                         </Stack>
                     </CardContent>
@@ -521,9 +520,8 @@ const CustomersForm: React.FC = () => {
                         disableElevation
                         sx={{ textTransform: "none" }}
                         disabled={isSubmitting}
-                        onClick={handleSubmit(onSubmit)}
                     >
-                        {"Create customer"}
+                        {isUpdate ? "Update customer" : "Create customer"}
                     </Button>
                 </Stack>
             </Stack>

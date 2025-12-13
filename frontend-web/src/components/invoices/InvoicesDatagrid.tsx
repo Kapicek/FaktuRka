@@ -159,12 +159,13 @@ const columns: GridColDef[] = [
 ];
 
 export default function InvoicesDatagrid() {
-    const { isLoading, data = [] } = useListInvoicesQuery();
+    const { isLoading, data } = useListInvoicesQuery();
+    const invoices = data?.items ?? [];
 
     return (
         <Box sx={{ flexGrow: 1, width: "100%", maxHeight: "100%", overflow: "auto" }}>
             <DataGrid
-                rows={data}
+                rows={invoices}
                 loading={isLoading}
                 columns={columns}
                 initialState={{
