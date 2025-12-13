@@ -7,7 +7,7 @@ import InvoicesDashboardCharts from '../components/invoices/InvoicesDashboardCha
 const Invoices = () => {
     const navigate = useNavigate();
     return (
-        <Stack direction={"column"} spacing={2} sx={{ flex: 1, height: "100%" }}>
+        <Stack direction={"column"} spacing={2} sx={{ flex: 1 }}>
             <Stack direction={"row"} justifyContent={"space-between"} alignItems={"center"}>
                 <Typography variant='h5' fontWeight={600}>
                     Invoices

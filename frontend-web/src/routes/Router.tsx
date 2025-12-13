@@ -11,6 +11,7 @@ import { HomeRounded } from "@mui/icons-material";
 import CustomersForm from "../pages/CustomersForm";
 import InvoicesForm from "../pages/InvoicesForm";
 import InvoicesDetail from "../pages/InvoicesDetail";
+import Profile from "../pages/Profile";
 
 export const router = createBrowserRouter([
     {
@@ -31,6 +32,7 @@ export const router = createBrowserRouter([
                             { index: true, path: "invoices/:id", element: <InvoicesDetail /> },
                             { index: true, path: "customers", element: <Customers />, handle: { breadcrumb: "Customers" } },
                             { index: true, path: "customers/new", element: <CustomersForm /> },
+                            { index: true, path: "profile", element: <Profile />, handle: { breadcrumb: "Profile" } },
                         ],
                     },
                 ],

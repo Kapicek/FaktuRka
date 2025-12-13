@@ -24,6 +24,6 @@ const baseQueryWithAuth: typeof rawBaseQuery = async (args, api, extraOptions) =
 export const baseApi = createApi({
     reducerPath: "api",
     baseQuery: baseQueryWithAuth,
-    tagTypes: ["Customer", "Invoice"],
+    tagTypes: ["Customer", "Invoice", "Profile"],
     endpoints: () => ({}),
 });

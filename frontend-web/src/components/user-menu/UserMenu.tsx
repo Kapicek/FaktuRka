@@ -3,12 +3,14 @@ import { Avatar, Button, Divider, FormControlLabel, FormGroup, ListItemIcon, Men
 import React from "react"
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectProfile, selectUser } from "../../features/auth/authSlice";
+import { useNavigate } from "react-router-dom";
 
 const UserMenu = () => {
 
     const dispatch = useDispatch();
     const profile = useSelector(selectProfile);
     const user = useSelector(selectUser);
+    const navigate = useNavigate();
 
     const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
     const open = Boolean(anchorEl);
@@ -85,7 +87,10 @@ const UserMenu = () => {
                             onChange={() => setMode(colorScheme === 'dark' ? 'light' : 'dark')} />} label="Dark mode" labelPlacement="start" />
                     </FormGroup>
                 </MenuItem>
-                <MenuItem onClick={handleClose}>
+                <MenuItem onClick={() => {
+                    handleClose();
+                    navigate("/profile");
+                }}>
                     <ListItemIcon>
                         <Person fontSize="small" />
                     </ListItemIcon>

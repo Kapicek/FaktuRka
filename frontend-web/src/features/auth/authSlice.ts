@@ -1,6 +1,7 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "../../app/store";
 import { authApi, type UserProfile } from "./authApi";
+import { profileApi } from "../profile/profileApi";
 
 export type JwtUser = {
     sub?: string;
@@ -120,6 +121,14 @@ export const authSlice = createSlice({
                 } else {
                     localStorage.removeItem("auth_profile");
                 }
+            })
+            .addMatcher(profileApi.endpoints.getMyProfile.matchFulfilled, (state, { payload }) => {
+                state.profile = payload;
+                localStorage.setItem("auth_profile", JSON.stringify(payload));
+            })
+            .addMatcher(profileApi.endpoints.updateProfile.matchFulfilled, (state, { payload }) => {
+                state.profile = payload;
+                localStorage.setItem("auth_profile", JSON.stringify(payload));
             });
     },
 });
