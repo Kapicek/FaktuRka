@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, Stack, Typography } from "@mui/material";
+import { Box, Card, CardContent, Grid, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { useListInvoicesQuery } from "../../features/invoices/invoicesApi";
@@ -85,51 +85,57 @@ const InvoicesDashboardCharts = () => {
     ].filter((d) => d.value > 0); // prázdné statusy vyhodíme, ať není koláč flekatý nulami
 
     return (
-        <Stack direction={"row"} spacing={2}>
-            <Card variant="outlined" sx={{ flex: 1 }}>
-                <CardContent>
-                    <Stack direction={"row"} spacing={2} justifyContent={"space-between"}>
-                        <Stack direction={"column"}>
-                            <Typography variant="body1">Total:</Typography>
-                            <Typography variant="h6" sx={{ fontWeight: 700, pb: 2 }}>
-                                {totalAmount.toLocaleString("cs-CZ")} CZK
-                            </Typography>
-                            <Typography variant="body1">
-                                {totalCount} {totalCount === 1 ? "invoice" : "invoices"}
-                            </Typography>
+        <Grid container spacing={2}>
+            <Grid size={{ xs: 12, md: 4 }}>
+                <Card variant="outlined" sx={{ height: "100%" }}>
+                    <CardContent>
+                        <Stack direction={"row"} spacing={2} justifyContent={"space-between"}>
+                            <Stack direction={"column"}>
+                                <Typography variant="body1">Total:</Typography>
+                                <Typography variant="h6" sx={{ fontWeight: 700, pb: 2 }}>
+                                    {totalAmount.toLocaleString("cs-CZ")} CZK
+                                </Typography>
+                                <Typography variant="body1">
+                                    {totalCount} {totalCount === 1 ? "invoice" : "invoices"}
+                                </Typography>
+                            </Stack>
+                            <Box sx={{ maxHeight: 150 }}>
+                                <PieChart
+                                    series={[
+                                        {
+                                            highlightScope: { fade: 'global', highlight: 'item' },
+                                            data: statusPieData.length
+                                                ? statusPieData
+                                                : [
+                                                    // fallback, když nejsou data – ať graf nezmizí úplně
+                                                    { id: "Empty", value: 1, label: "No data" },
+                                                ],
+                                            innerRadius: 35,
+                                            paddingAngle: 1,
+                                            cornerRadius: 3,
+                                        },
+                                    ]}
+                                    width={120}
+                                    height={120}
+                                    hideLegend
+                                />
+                            </Box>
                         </Stack>
-                        <Box sx={{ maxHeight: 150 }}>
-                            <PieChart
-                                series={[
-                                    {
-                                        highlightScope: { fade: 'global', highlight: 'item' },
-                                        data: statusPieData.length
-                                            ? statusPieData
-                                            : [
-                                                // fallback, když nejsou data – ať graf nezmizí úplně
-                                                { id: "Empty", value: 1, label: "No data" },
-                                            ],
-                                        innerRadius: 35,
-                                        paddingAngle: 1,
-                                        cornerRadius: 3,
-                                    },
-                                ]}
-                                width={120}
-                                height={120}
-                                hideLegend
-                            />
-                        </Box>
-                    </Stack>
-                </CardContent>
-            </Card>
+                    </CardContent>
+                </Card>
+            </Grid>
 
-            <Card sx={{ flex: 1 }} variant="outlined">
-                {/* sem pak dáme další graf / statistiku */}
-            </Card>
-            <Card sx={{ flex: 1 }} variant="outlined">
-                {/* třetí panel */}
-            </Card>
-        </Stack>
+            <Grid size={{ xs: 12, md: 4 }}>
+                <Card sx={{ height: "100%" }} variant="outlined">
+                    {/* sem pak dáme další graf / statistiku */}
+                </Card>
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+                <Card sx={{ height: "100%" }} variant="outlined">
+                    {/* třetí panel */}
+                </Card>
+            </Grid>
+        </Grid>
     );
 };
 
