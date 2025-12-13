@@ -185,6 +185,20 @@ export const invoicesApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: [{ type: "Invoice", id: "LIST" }],
         }),
+        // ===== Export invoice =====
+        exportInvoice: build.mutation<void, number | string>({
+            query: (id) => ({
+                url: `/Invoices/${id}/export`,
+                method: "POST",
+            }),
+        }),
+        downloadInvoiceFile: build.mutation<Blob, number | string>({
+            query: (id) => ({
+                url: `/Invoices/${id}/export-file`,
+                method: "GET",
+                responseHandler: (response) => response.blob(),
+            }),
+        }),
         // ===== Delete invoice =====
         deleteInvoice: build.mutation<void, number | string>({
             query: (id) => ({
@@ -204,5 +218,7 @@ export const {
     useListInvoicesQuery,
     useGetInvoiceQuery,
     useCreateInvoiceMutation,
+    useExportInvoiceMutation,
+    useDownloadInvoiceFileMutation,
     useDeleteInvoiceMutation,
 } = invoicesApi;

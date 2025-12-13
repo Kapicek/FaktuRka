@@ -16,6 +16,8 @@ import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import {
     useListInvoicesQuery,
     useDeleteInvoiceMutation,
+    useExportInvoiceMutation,
+    useDownloadInvoiceFileMutation,
     type InvoiceListItem,
 } from "../../features/invoices/invoicesApi";
 import React from "react";
@@ -74,6 +76,8 @@ const STATUS_CONFIG: Record<InvoiceStatus, StatusConfig> = {
 export default function InvoicesDatagrid() {
     const { isLoading, data } = useListInvoicesQuery();
     const [deleteInvoice] = useDeleteInvoiceMutation();
+    const [exportInvoice] = useExportInvoiceMutation();
+    const [downloadInvoiceFile] = useDownloadInvoiceFileMutation();
     const [selectedInvoice, setSelectedInvoice] = React.useState<InvoiceListItem | null>(null);
     const invoices = data?.items ?? [];
 
@@ -93,6 +97,23 @@ export default function InvoicesDatagrid() {
             setSelectedInvoice(null);
         }
     };
+
+    const handleExportClick = React.useCallback(async (invoice: InvoiceListItem) => {
+        try {
+            await exportInvoice(invoice.id).unwrap();
+            const blob = await downloadInvoiceFile(invoice.id).unwrap();
+            const url = window.URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `${invoice.numberFull ?? `invoice-${invoice.id}`}.pdf`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            document.body.removeChild(anchor);
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error("Failed to export invoice", error);
+        }
+    }, [exportInvoice, downloadInvoiceFile]);
 
     const columns = React.useMemo<GridColDef[]>(() => [
         {
@@ -168,6 +189,7 @@ export default function InvoicesDatagrid() {
                         <GridActionsCellItem
                             icon={<FileDownloadRounded />}
                             label="Export pdf"
+                            onClick={() => handleExportClick(params.row as InvoiceListItem)}
                             color="default"
                         />
                     </Tooltip>
@@ -182,7 +204,7 @@ export default function InvoicesDatagrid() {
                 </Stack>
             ),
         },
-    ], [handleDeleteClick]);
+    ], [handleDeleteClick, handleExportClick]);
 
     return (
         <Box sx={{ flexGrow: 1, width: "100%", maxHeight: "100%", overflow: "auto" }}>
