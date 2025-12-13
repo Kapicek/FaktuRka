@@ -1,11 +1,14 @@
 import Box from "@mui/material/Box";
-import { Chip, Stack, type ChipProps, Tooltip, Autocomplete, Grid, TextField, Typography } from "@mui/material";
+import { Chip, Stack, type ChipProps, Tooltip, Autocomplete, Grid, TextField, Button } from "@mui/material";
 import {
     DataGrid,
     GridActionsCellItem,
     type GridColDef,
     type GridSortModel,
+    type GridRowSelectionModel,
+    type GridRowId,
 } from "@mui/x-data-grid";
+import JSZip from "jszip";
 
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import HourglassEmptyIcon from "@mui/icons-material/HourglassEmpty";
@@ -18,16 +21,18 @@ import {
     useListInvoicesQuery,
     useDeleteInvoiceMutation,
     useExportInvoiceMutation,
-    useDownloadInvoiceFileMutation,
     type InvoiceListItem,
 } from "../../features/invoices/invoicesApi";
 import React from "react";
-import { Delete, Edit, FileDownloadRounded, ContentCopy } from "@mui/icons-material";
+import { Delete, FileDownloadRounded, ContentCopy } from "@mui/icons-material";
 import { Link, useNavigate } from "react-router-dom";
 import ConfirmDialog from "../dialogs/ConfirmDialog";
 import type { Customer } from "../../features/customers/customersApi";
 import { useListCustomersQuery } from "../../features/customers/customersApi";
 import type { ListInvoicesArgs } from "../../features/invoices/invoicesApi";
+import { useSelector } from "react-redux";
+import { selectToken } from "../../features/auth/authSlice";
+import { API_BASE_URL } from "../../features/api/baseApi";
 
 export enum InvoiceStatus {
     Draft = 0,
@@ -94,13 +99,19 @@ export default function InvoicesDatagrid() {
     const { isLoading, data } = useListInvoicesQuery(queryArgs);
     const [deleteInvoice] = useDeleteInvoiceMutation();
     const [exportInvoice] = useExportInvoiceMutation();
-    const [downloadInvoiceFile] = useDownloadInvoiceFileMutation();
     const [selectedInvoice, setSelectedInvoice] = React.useState<InvoiceListItem | null>(null);
     const navigate = useNavigate();
     const invoices = data?.items ?? [];
     const rowCount = data?.totalCount ?? 0;
+    const authToken = useSelector(selectToken);
 
     const { data: customers = [], isLoading: customersLoading } = useListCustomersQuery();
+    const [rowSelectionModel, setRowSelectionModel] = React.useState<GridRowSelectionModel>({
+        type: "include",
+        ids: new Set<GridRowId>(),
+    });
+    const [selectedRows, setSelectedRows] = React.useState<InvoiceListItem[]>([]);
+    const [isExportingSelected, setIsExportingSelected] = React.useState(false);
 
     const handleDeleteClick = React.useCallback((invoice: InvoiceListItem) => {
         setSelectedInvoice(invoice);
@@ -119,26 +130,74 @@ export default function InvoicesDatagrid() {
         }
     };
 
-    const handleExportClick = React.useCallback(async (invoice: InvoiceListItem) => {
+    const handleDuplicateClick = React.useCallback((invoice: InvoiceListItem) => {
+        navigate("/invoices/new", { state: { duplicateInvoiceId: invoice.id } });
+    }, [navigate]);
+
+    const fetchInvoiceBlob = React.useCallback(
+        async (invoiceId: number) => {
+            const response = await fetch(
+                `${API_BASE_URL}/Invoices/${invoiceId}/export-file`,
+                {
+                    headers: authToken
+                        ? { Authorization: `Bearer ${authToken}` }
+                        : undefined,
+                }
+            );
+            if (!response.ok) {
+                throw new Error("Failed to download invoice file");
+            }
+            return response.blob();
+        },
+        [authToken]
+    );
+
+    const handleExportClick = React.useCallback(
+        async (invoice: InvoiceListItem) => {
+            try {
+                await exportInvoice(invoice.id).unwrap();
+                const blob = await fetchInvoiceBlob(invoice.id);
+                const url = window.URL.createObjectURL(blob);
+                const anchor = document.createElement("a");
+                anchor.href = url;
+                anchor.download = `${invoice.numberFull ?? `invoice-${invoice.id}`}.pdf`;
+                document.body.appendChild(anchor);
+                anchor.click();
+                document.body.removeChild(anchor);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                console.error("Failed to export invoice", error);
+            }
+        },
+        [exportInvoice, fetchInvoiceBlob]
+    );
+
+    const handleExportSelected = React.useCallback(async () => {
+        if (!selectedRows.length) return;
+        setIsExportingSelected(true);
         try {
-            await exportInvoice(invoice.id).unwrap();
-            const blob = await downloadInvoiceFile(invoice.id).unwrap();
-            const url = window.URL.createObjectURL(blob);
+            const zip = new JSZip();
+            for (const invoice of selectedRows) {
+                await exportInvoice(invoice.id).unwrap();
+                const blob = await fetchInvoiceBlob(invoice.id);
+                const filename = `${invoice.numberFull ?? `invoice-${invoice.id}`}.pdf`;
+                zip.file(filename, blob);
+            }
+            const content = await zip.generateAsync({ type: "blob" });
+            const url = window.URL.createObjectURL(content);
             const anchor = document.createElement("a");
             anchor.href = url;
-            anchor.download = `${invoice.numberFull ?? `invoice-${invoice.id}`}.pdf`;
+            anchor.download = `invoices-${Date.now()}.zip`;
             document.body.appendChild(anchor);
             anchor.click();
             document.body.removeChild(anchor);
             window.URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Failed to export invoice", error);
+            console.error("Failed to export selected invoices", error);
+        } finally {
+            setIsExportingSelected(false);
         }
-    }, [exportInvoice, downloadInvoiceFile]);
-
-    const handleDuplicateClick = React.useCallback((invoice: InvoiceListItem) => {
-        navigate("/invoices/new", { state: { duplicateInvoiceId: invoice.id } });
-    }, [navigate]);
+    }, [selectedRows, exportInvoice, fetchInvoiceBlob]);
 
     const columns = React.useMemo<GridColDef[]>(() => [
         {
@@ -203,14 +262,6 @@ export default function InvoicesDatagrid() {
             cellClassName: 'actions',
             renderCell: (params) => (
                 <Stack direction="row" spacing={0}>
-                    <Tooltip title="Download pdf">
-                        <GridActionsCellItem
-                            icon={<FileDownloadRounded />}
-                            label="Export pdf"
-                            onClick={() => handleExportClick(params.row as InvoiceListItem)}
-                            color="default"
-                        />
-                    </Tooltip>
                     <Tooltip title="Duplicate">
                         <GridActionsCellItem
                             icon={<ContentCopy />}
@@ -230,7 +281,7 @@ export default function InvoicesDatagrid() {
                 </Stack>
             ),
         },
-    ], [handleDeleteClick, handleExportClick, handleDuplicateClick]);
+    ], [handleDeleteClick, handleDuplicateClick]);
 
     return (
         <Box
@@ -247,6 +298,7 @@ export default function InvoicesDatagrid() {
                 spacing={2}
                 mb={2}
                 flexShrink={0}
+                alignItems="flex-start"
             >
                 <Grid container spacing={2} sx={{ flex: 1 }}>
                     <Grid size={{ xs: 12, sm: 6, md: 3 }}>
@@ -355,6 +407,15 @@ export default function InvoicesDatagrid() {
                         </Stack>
                     </Grid>
                 </Grid>
+                <Button
+                    variant="outlined"
+                    startIcon={<FileDownloadRounded />}
+                    disabled={!selectedRows.length || isExportingSelected}
+                    sx={{ textTransform: "none", backgroundColor: "background.default" }}
+                    onClick={handleExportSelected}
+                >
+                    {isExportingSelected ? "Exporting..." : "Export selected"}
+                </Button>
             </Stack>
             <DataGrid
                 rows={invoices}
@@ -370,6 +431,37 @@ export default function InvoicesDatagrid() {
                 pageSizeOptions={[10, 25, 50]}
                 checkboxSelection
                 disableRowSelectionOnClick
+                rowSelectionModel={rowSelectionModel}
+                onRowSelectionModelChange={(model) => {
+                    const normalizedModel: GridRowSelectionModel = Array.isArray(model)
+                        ? {
+                            type: "include",
+                            ids: new Set<GridRowId>(model as GridRowId[]),
+                        }
+                        : model;
+                    setRowSelectionModel(normalizedModel);
+
+                    const idsSet =
+                        normalizedModel.type === "include"
+                            ? normalizedModel.ids ?? new Set<GridRowId>()
+                            : new Set<GridRowId>(
+                                invoices
+                                    .map((row) => row.id as GridRowId)
+                                    .filter(
+                                        (id) =>
+                                            !(normalizedModel.ids ?? new Set<GridRowId>()).has(id)
+                                    )
+                            );
+
+                    const selectedIds = new Set(
+                        Array.from(idsSet).map((id) => String(id))
+                    );
+
+                    const selected = invoices.filter((inv) =>
+                        selectedIds.has(String(inv.id))
+                    );
+                    setSelectedRows(selected);
+                }}
                 sx={{ flex: 1 }}
             />
             <ConfirmDialog
