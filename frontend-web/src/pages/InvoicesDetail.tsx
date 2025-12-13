@@ -309,6 +309,7 @@ const InvoicesDetail = () => {
                         startIcon={<EditRounded />}
                         sx={{ textTransform: "none" }}
                         onClick={() => navigate(`/invoices/${invoice.id}/edit`)}
+                        disabled={invoice.status !== InvoiceStatus.Draft}
                     >
                         Edit
                     </Button>

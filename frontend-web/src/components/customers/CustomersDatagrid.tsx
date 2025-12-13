@@ -11,13 +11,15 @@ import {
     useDeleteCustomerMutation,
     type Customer,
 } from "../../features/customers/customersApi";
-import { Delete } from "@mui/icons-material";
+import { Delete, Edit } from "@mui/icons-material";
 import ConfirmDialog from "../dialogs/ConfirmDialog";
+import { useNavigate } from "react-router-dom";
 
 export default function CustomersDatagrid() {
     const { isLoading, data } = useListCustomersQuery();
     const [deleteCustomer] = useDeleteCustomerMutation();
     const customers = data ?? [];
+    const navigate = useNavigate();
 
     const [selectedCustomer, setSelectedCustomer] = React.useState<Customer | null>(null);
 
@@ -66,6 +68,14 @@ export default function CustomersDatagrid() {
             width: 100,
             renderCell: (params) => (
                 <Stack direction="row" spacing={0}>
+                    <Tooltip title="Edit customer">
+                        <GridActionsCellItem
+                            icon={<Edit />}
+                            label="Edit"
+                            onClick={() => navigate(`/customers/${params.row.id}/update`)}
+                            color="default"
+                        />
+                    </Tooltip>
                     <Tooltip title="Delete customer">
                         <GridActionsCellItem
                             icon={<Delete />}
@@ -77,7 +87,7 @@ export default function CustomersDatagrid() {
                 </Stack>
             ),
         },
-    ], [handleDeleteClick]);
+    ], [handleDeleteClick, navigate]);
 
     return (
         <Box sx={{ flexGrow: 1, width: "100%" }}>

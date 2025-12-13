@@ -31,6 +31,7 @@ export const router = createBrowserRouter([
                             { index: true, path: "invoices/:id", element: <InvoicesDetail /> },
                             { index: true, path: "customers", element: <Customers />, handle: { breadcrumb: "Customers" } },
                             { index: true, path: "customers/new", element: <CustomersForm /> },
+                            { index: true, path: "customers/:id/update", element: <CustomersForm /> },
                             { index: true, path: "profile", element: <Profile />, handle: { breadcrumb: "Profile" } },
                         ],
                     },
