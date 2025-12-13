@@ -67,6 +67,8 @@ export type Invoice = {
     numberFull: string;
     variableSymbol: string;
     status: number;
+    customerId?: number;
+    sequenceId?: number | null;
     issueDate: string;
     dueDate: string;
     supplyDate: string;
@@ -122,6 +124,8 @@ export type InvoiceCreateAttributes = {
     noteInternal?: string;
     items: InvoiceItemCreate[];
 };
+
+export type InvoiceUpdateAttributes = InvoiceCreateAttributes;
 
 export const invoicesApi = baseApi.injectEndpoints({
     endpoints: (build) => ({
@@ -185,6 +189,17 @@ export const invoicesApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: [{ type: "Invoice", id: "LIST" }],
         }),
+        updateInvoice: build.mutation<Invoice, { id: number | string; body: InvoiceUpdateAttributes }>({
+            query: ({ id, body }) => ({
+                url: `/Invoices/${id}`,
+                method: "PUT",
+                body,
+            }),
+            invalidatesTags: (_res, _err, { id }) => [
+                { type: "Invoice", id },
+                { type: "Invoice", id: "LIST" },
+            ],
+        }),
         // ===== Export invoice =====
         exportInvoice: build.mutation<void, number | string>({
             query: (id) => ({
@@ -218,6 +233,7 @@ export const {
     useListInvoicesQuery,
     useGetInvoiceQuery,
     useCreateInvoiceMutation,
+    useUpdateInvoiceMutation,
     useExportInvoiceMutation,
     useDownloadInvoiceFileMutation,
     useDeleteInvoiceMutation,

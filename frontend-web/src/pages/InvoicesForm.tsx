@@ -20,7 +20,7 @@ import {
     ArrowBackRounded,
     NoteAddRounded,
 } from "@mui/icons-material";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -28,7 +28,7 @@ import {
     useFieldArray,
     Controller,
 } from "react-hook-form";
-import { useCreateInvoiceMutation, useGetInvoiceQuery } from "../features/invoices/invoicesApi";
+import { useCreateInvoiceMutation, useGetInvoiceQuery, useUpdateInvoiceMutation } from "../features/invoices/invoicesApi";
 import {
     useListCustomersQuery,
     type Customer,
@@ -119,16 +119,25 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const InvoicesForm: React.FC = () => {
     const navigate = useNavigate();
+    const { id: editInvoiceParam } = useParams<{ id?: string }>();
     const location = useLocation();
     const duplicateInvoiceId =
         (location.state as { duplicateInvoiceId?: number } | undefined)
             ?.duplicateInvoiceId;
+    const editInvoiceId = editInvoiceParam ? Number(editInvoiceParam) : undefined;
     const { colorScheme } = useColorScheme();
     const [createInvoice] = useCreateInvoiceMutation();
-    const { data: duplicateInvoice, isFetching: isFetchingDuplicate } = useGetInvoiceQuery(
-        duplicateInvoiceId ?? 0,
-        { skip: !duplicateInvoiceId }
+    const [updateInvoice] = useUpdateInvoiceMutation();
+    const templateInvoiceId = editInvoiceId ?? duplicateInvoiceId;
+    const { data: templateInvoice, isFetching: isFetchingTemplate } = useGetInvoiceQuery(
+        templateInvoiceId ?? 0,
+        { skip: !templateInvoiceId }
     );
+    const mode: "create" | "duplicate" | "edit" = editInvoiceId
+        ? "edit"
+        : duplicateInvoiceId
+            ? "duplicate"
+            : "create";
 
     const {
         handleSubmit,
@@ -172,20 +181,20 @@ const InvoicesForm: React.FC = () => {
         useListCustomersQuery();
 
     React.useEffect(() => {
-        if (!duplicateInvoice) return;
+        if (!templateInvoice) return;
         reset({
-            customerId: duplicateInvoice.customerId ?? 0,
-            sequenceId: duplicateInvoice.sequenceId ?? null,
-            issueDate: duplicateInvoice.issueDate,
-            dueDate: duplicateInvoice.dueDate,
-            supplyDate: duplicateInvoice.supplyDate ?? duplicateInvoice.issueDate,
-            currency: duplicateInvoice.currency,
-            taxMode: duplicateInvoice.taxMode,
-            vatRateDefault: duplicateInvoice.vatRateDefault,
-            variableSymbol: duplicateInvoice.variableSymbol ?? "",
-            notePublic: duplicateInvoice.notePublic ?? "",
-            noteInternal: duplicateInvoice.noteInternal ?? "",
-            items: duplicateInvoice.items.map((item) => ({
+            customerId: templateInvoice.customerId ?? 0,
+            sequenceId: templateInvoice.sequenceId ?? null,
+            issueDate: templateInvoice.issueDate,
+            dueDate: templateInvoice.dueDate,
+            supplyDate: templateInvoice.supplyDate ?? templateInvoice.issueDate,
+            currency: templateInvoice.currency,
+            taxMode: templateInvoice.taxMode,
+            vatRateDefault: templateInvoice.vatRateDefault,
+            variableSymbol: templateInvoice.variableSymbol ?? "",
+            notePublic: templateInvoice.notePublic ?? "",
+            noteInternal: templateInvoice.noteInternal ?? "",
+            items: templateInvoice.items.map((item) => ({
                 name: item.name,
                 description: item.description ?? "",
                 quantity: item.quantity,
@@ -195,12 +204,14 @@ const InvoicesForm: React.FC = () => {
                 discount: item.discount ?? 0,
             })),
         });
-    }, [duplicateInvoice, reset]);
+    }, [templateInvoice, reset]);
 
-    if (duplicateInvoiceId && isFetchingDuplicate) {
+    if (templateInvoiceId && isFetchingTemplate) {
         return (
             <Stack direction="column" spacing={2} sx={{ flex: 1, pb: 6 }}>
-                <Typography>Loading invoice data…</Typography>
+                <Typography>
+                    {mode === "edit" ? "Loading invoice for editing…" : "Loading invoice data…"}
+                </Typography>
             </Stack>
         );
     }
@@ -209,10 +220,15 @@ const InvoicesForm: React.FC = () => {
         try {
             const payload = {
                 ...values,
-                sequenceId: null as number | null,
+                sequenceId: values.sequenceId ?? null,
             };
-            await createInvoice(payload).unwrap();
-            navigate("/invoices");
+            if (editInvoiceId) {
+                await updateInvoice({ id: editInvoiceId, body: payload }).unwrap();
+                navigate(`/invoices/${editInvoiceId}`);
+            } else {
+                await createInvoice(payload).unwrap();
+                navigate("/invoices");
+            }
         } catch (e) {
             console.error("Invoice save failed", e);
         }
@@ -223,7 +239,11 @@ const InvoicesForm: React.FC = () => {
             <Stack direction="column" spacing={2} sx={{ flex: 1, pb: 6 }}>
                 <Stack direction="row" justifyContent="space-between" alignItems="center">
                     <Typography variant="h5" fontWeight={600}>
-                        Create invoice
+                        {mode === "edit"
+                            ? `Edit invoice ${templateInvoice?.numberFull ?? ""}`
+                            : mode === "duplicate"
+                                ? "Duplicate invoice"
+                                : "Create invoice"}
                     </Typography>
                     <Button
                         startIcon={<ArrowBackRounded />}
@@ -833,7 +853,7 @@ const InvoicesForm: React.FC = () => {
                         sx={{ textTransform: "none" }}
                         disabled={isSubmitting}
                     >
-                        Issue invoice
+                        {mode === "edit" ? "Save changes" : "Issue invoice"}
                     </Button>
                 </Stack>
             </Stack>

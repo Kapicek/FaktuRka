@@ -19,11 +19,14 @@ import {
     Typography,
 } from "@mui/material";
 import { FileDownloadRounded, EditRounded } from "@mui/icons-material";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
-import { useGetInvoiceQuery, type Invoice } from "../features/invoices/invoicesApi";
+import { useGetInvoiceQuery, useExportInvoiceMutation, type Invoice } from "../features/invoices/invoicesApi";
 import { InvoiceStatus, STATUS_CONFIG } from "../components/invoices/statusConfig";
 import { useTheme } from "@mui/material/styles";
+import { API_BASE_URL } from "../features/api/baseApi";
+import { useSelector } from "react-redux";
+import { selectToken } from "../features/auth/authSlice";
 
 const formatCurrency = (value?: number, currency = "CZK") => {
     if (typeof value !== "number") return "-";
@@ -37,6 +40,27 @@ const formatCurrency = (value?: number, currency = "CZK") => {
 const formatDate = (value?: string) => {
     if (!value) return "-";
     return dayjs(value).format("DD.MM.YYYY");
+};
+
+const downloadBlob = (blob: Blob, filename: string) => {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    window.URL.revokeObjectURL(url);
+};
+
+const fetchInvoiceBlob = async (invoiceId: number, token: string | null) => {
+    const response = await fetch(`${API_BASE_URL}/Invoices/${invoiceId}/export-file`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+    });
+    if (!response.ok) {
+        throw new Error("Failed to download invoice file");
+    }
+    return response.blob();
 };
 
 type TabPanelProps = {
@@ -213,10 +237,13 @@ const InvoicePreview = ({ invoice }: { invoice: Invoice }) => {
 };
 
 const InvoicesDetail = () => {
+    const navigate = useNavigate();
     const params = useParams<{ id: string }>();
     const invoiceId = params.id ?? "";
     const [tab, setTab] = React.useState(0);
     const { data: invoice, isLoading, isError } = useGetInvoiceQuery(invoiceId, { skip: !invoiceId });
+    const authToken = useSelector(selectToken);
+    const [triggerExport, { isLoading: isExporting }] = useExportInvoiceMutation();
 
     const statusConfig = invoice ? STATUS_CONFIG[invoice.status as InvoiceStatus] : undefined;
     const StatusIcon = statusConfig?.icon;
@@ -259,10 +286,30 @@ const InvoicesDetail = () => {
                 </Stack>
 
                 <Stack direction="row" spacing={1}>
-                    <Button variant="outlined" startIcon={<FileDownloadRounded />} sx={{ textTransform: "none" }}>
+                    <Button
+                        variant="outlined"
+                        startIcon={<FileDownloadRounded />}
+                        sx={{ textTransform: "none" }}
+                        disabled={isExporting}
+                        onClick={async () => {
+                            if (!invoice) return;
+                            try {
+                                await triggerExport(invoice.id).unwrap();
+                                const blob = await fetchInvoiceBlob(invoice.id, authToken);
+                                downloadBlob(blob, `${invoice.numberFull ?? `invoice-${invoice.id}`}.pdf`);
+                            } catch (error) {
+                                console.error("Failed to export invoice", error);
+                            }
+                        }}
+                    >
                         Export
                     </Button>
-                    <Button variant="contained" startIcon={<EditRounded />} sx={{ textTransform: "none" }}>
+                    <Button
+                        variant="contained"
+                        startIcon={<EditRounded />}
+                        sx={{ textTransform: "none" }}
+                        onClick={() => navigate(`/invoices/${invoice.id}/edit`)}
+                    >
                         Edit
                     </Button>
                 </Stack>
