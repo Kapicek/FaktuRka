@@ -15,6 +15,7 @@ import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import dayjs from "dayjs";
 import WarningAmberIcon from "@mui/icons-material/WarningAmber";
+import ClearIcon from "@mui/icons-material/Clear";
 
 type Filters = {
     status?: InvoiceStatus;
@@ -70,7 +71,7 @@ export const InvoicesFiltersToolbar = ({
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
-                                    placeholder="Status"
+                                    label="Status"
                                     size="small"
                                     sx={{ backgroundColor: "background.default" }}
                                 />
@@ -113,7 +114,7 @@ export const InvoicesFiltersToolbar = ({
                             renderInput={(params) => (
                                 <TextField
                                     {...params}
-                                    placeholder="Customer"
+                                    label="Customer"
                                     size="small"
                                     sx={{ backgroundColor: "background.default" }}
                                 />
@@ -125,7 +126,7 @@ export const InvoicesFiltersToolbar = ({
                 <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Stack spacing={1}>
                         <DatePicker
-                            label="Period"
+                            label="Issue Date"
                             views={["year", "month", "day"]}
                             value={filters.periodDate ? dayjs(filters.periodDate) : null}
                             onChange={(value) =>
@@ -134,12 +135,18 @@ export const InvoicesFiltersToolbar = ({
                                     periodDate: value ? value.format("YYYY-MM-DD") : undefined,
                                 })
                             }
+                            slots={{
+                                clearIcon: ClearIcon,
+                            }}
                             slotProps={{
                                 textField: {
                                     size: "small",
                                     sx: {
                                         backgroundColor: "background.default",
                                     },
+                                },
+                                actionBar: {
+                                    actions: ["clear"],
                                 },
                             }}
                         />
