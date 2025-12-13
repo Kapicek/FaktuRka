@@ -1,7 +1,11 @@
+import React from "react";
 import { Box, Card, CardContent, Grid, Stack, Typography } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { useListInvoicesQuery } from "../../features/invoices/invoicesApi";
+import { useSelector } from "react-redux";
+import { selectPreferredCurrency } from "../../features/settings/settingsSlice";
+import { CURRENCY_RATES } from "../../constants/currencies";
 
 // FE kopie backend enumu
 export enum InvoiceStatus {
@@ -13,16 +17,38 @@ export enum InvoiceStatus {
     Cancelled = 5,
 }
 
+const getCurrencyRate = (code?: string) => {
+    if (!code) return 1;
+    return CURRENCY_RATES[code] ?? 1;
+};
+
+const convertAmount = (value: number, fromCurrency: string | undefined, toCurrency: string) => {
+    const fromRate = getCurrencyRate(fromCurrency);
+    const toRate = getCurrencyRate(toCurrency);
+    if (toRate === 0) return value;
+    return (value * fromRate) / toRate;
+};
+
 const InvoicesDashboardCharts = () => {
     const theme = useTheme();
+    const preferredCurrency = useSelector(selectPreferredCurrency);
 
     const { data } = useListInvoicesQuery();
     const invoices = data?.items ?? [];
 
     // ===== agregace dat =====
     const totalAmount = invoices.reduce(
-        (sum, inv) => sum + (inv.total ?? 0),
+        (sum, inv) => sum + convertAmount(inv.total ?? 0, inv.currency, preferredCurrency),
         0
+    );
+    const currencyFormatter = React.useMemo(
+        () =>
+            new Intl.NumberFormat(undefined, {
+                style: "currency",
+                currency: preferredCurrency,
+                minimumFractionDigits: 2,
+            }),
+        [preferredCurrency]
     );
 
     const totalCount = data?.totalCount ?? invoices.length;
@@ -93,7 +119,7 @@ const InvoicesDashboardCharts = () => {
                             <Stack direction={"column"}>
                                 <Typography variant="body1">Total:</Typography>
                                 <Typography variant="h6" sx={{ fontWeight: 700, pb: 2 }}>
-                                    {totalAmount.toLocaleString("cs-CZ")} CZK
+                                    {currencyFormatter.format(totalAmount)}
                                 </Typography>
                                 <Typography variant="body1">
                                     {totalCount} {totalCount === 1 ? "invoice" : "invoices"}

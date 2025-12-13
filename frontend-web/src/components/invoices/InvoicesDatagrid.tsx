@@ -97,11 +97,12 @@ export default function InvoicesDatagrid() {
     };
 
     const { isLoading, data } = useListInvoicesQuery(queryArgs);
-    const { data: customers = [], isLoading: customersLoading } = useListCustomersQuery();
+    const { data: customersData, isLoading: customersLoading } = useListCustomersQuery();
     const [deleteInvoice] = useDeleteInvoiceMutation();
     const [triggerExport] = useExportInvoiceMutation();
 
     const invoices = data?.items ?? [];
+    const customers = customersData?.items ?? [];
     const rowCount = data?.totalCount ?? 0;
     const currentPageRowIds = React.useMemo(
         () => invoices.map((inv) => inv.id as GridRowId),
