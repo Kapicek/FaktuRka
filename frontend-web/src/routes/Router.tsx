@@ -1,13 +1,11 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import App from "../App";
 import Layout from "../layouts/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import SignIn from "../pages/SignIn";
 import SignUp from "../pages/SignUp";
-import Home from "../pages/Home";
 import Customers from "../pages/Customers";
 import Invoices from "../pages/Invoices";
-import { HomeRounded } from "@mui/icons-material";
 import CustomersForm from "../pages/CustomersForm";
 import InvoicesForm from "../pages/InvoicesForm";
 import InvoicesDetail from "../pages/InvoicesDetail";
@@ -26,7 +24,7 @@ export const router = createBrowserRouter([
                     {
                         element: <Layout />,
                         children: [
-                            { index: true, element: <Home />, handle: { breadcrumb: <HomeRounded /> } },
+                            { index: true, element: <Navigate to="/invoices" replace /> },
                             { index: true, path: "invoices", element: <Invoices />, handle: { breadcrumb: "Invoices" } },
                             { index: true, path: "invoices/new", element: <InvoicesForm /> },
                             { index: true, path: "invoices/:id", element: <InvoicesDetail /> },

@@ -4,11 +4,10 @@ import { ReactRouterAppProvider } from "@toolpad/core/react-router";
 import type { Navigation } from "@toolpad/core/AppProvider";
 import { selectUser } from "./features/auth/authSlice";
 import SessionProvider from "./SessionContext";
-import { DescriptionRounded, HomeRounded, PeopleRounded } from "@mui/icons-material";
+import { DescriptionRounded, PeopleRounded } from "@mui/icons-material";
 
 const NAVIGATION: Navigation = [
   { kind: "header", title: "Main" },
-  { kind: "page", segment: "", title: "Home ", icon: <HomeRounded /> },
   { kind: "page", segment: "invoices", title: "Invoices ", icon: <DescriptionRounded /> },
   { kind: "page", segment: "customers", title: "Customers ", icon: <PeopleRounded /> },
 ];
