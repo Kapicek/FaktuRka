@@ -27,10 +27,13 @@ import { InvoicesFiltersToolbar } from "./InvoicesFiltersToolbar";
 import { InvoiceStatus, STATUS_CONFIG } from "./statusConfig";
 import { selectToken } from "../../features/auth/authSlice";
 import { API_BASE_URL } from "../../features/api/baseApi";
+import dayjs from "dayjs";
 
 type FiltersState = {
     status?: InvoiceStatus;
     customerId?: number;
+    periodDate?: string;
+    overdueOnly?: boolean;
 };
 
 const extractSelectedIds = (
@@ -75,7 +78,17 @@ const fetchInvoiceBlob = async (invoiceId: number, token: string | null) => {
     return response.blob();
 };
 
-export default function InvoicesDatagrid() {
+type SelectionContext = {
+    selectedCount: number;
+    isExporting: boolean;
+    exportSelected: () => void;
+};
+
+type InvoicesDatagridProps = {
+    onSelectionContextChange?: (ctx: SelectionContext) => void;
+};
+
+export default function InvoicesDatagrid({ onSelectionContextChange }: InvoicesDatagridProps) {
     const navigate = useNavigate();
     const authToken = useSelector(selectToken);
 
@@ -90,6 +103,9 @@ export default function InvoicesDatagrid() {
     const queryArgs: ListInvoicesArgs = {
         status: filters.status,
         customerId: filters.customerId,
+        issueDateFrom: filters.periodDate,
+        issueDateTo: filters.periodDate,
+        dueDateTo: filters.overdueOnly ? dayjs().format("YYYY-MM-DD") : undefined,
         page: paginationModel.page + 1,
         pageSize: paginationModel.pageSize,
         sortBy: sortModel[0]?.field,
@@ -159,6 +175,15 @@ export default function InvoicesDatagrid() {
             setIsExportingSelected(false);
         }
     }, [selectedInvoices, triggerExport, authToken]);
+
+    React.useEffect(() => {
+        if (!onSelectionContextChange) return;
+        onSelectionContextChange({
+            selectedCount: selectedInvoices.length,
+            isExporting: isExportingSelected,
+            exportSelected: handleExportSelected,
+        });
+    }, [selectedInvoices.length, isExportingSelected, handleExportSelected, onSelectionContextChange]);
 
     const rowSelectionModel = React.useMemo<GridRowSelectionModel>(
         () => ({
@@ -271,9 +296,6 @@ export default function InvoicesDatagrid() {
                 onChange={handleFiltersChange}
                 customers={customers}
                 customersLoading={customersLoading}
-                selectedInvoices={selectedInvoices}
-                isExporting={isExportingSelected}
-                onExportSelected={handleExportSelected}
             />
 
             <DataGrid
