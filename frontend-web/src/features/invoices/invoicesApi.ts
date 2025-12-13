@@ -185,6 +185,17 @@ export const invoicesApi = baseApi.injectEndpoints({
             }),
             invalidatesTags: [{ type: "Invoice", id: "LIST" }],
         }),
+        // ===== Delete invoice =====
+        deleteInvoice: build.mutation<void, number | string>({
+            query: (id) => ({
+                url: `/Invoices/${id}`,
+                method: "DELETE",
+            }),
+            invalidatesTags: (_res, _err, id) => [
+                { type: "Invoice" as const, id },
+                { type: "Invoice" as const, id: "LIST" },
+            ],
+        }),
     }),
     overrideExisting: false,
 });
@@ -193,4 +204,5 @@ export const {
     useListInvoicesQuery,
     useGetInvoiceQuery,
     useCreateInvoiceMutation,
+    useDeleteInvoiceMutation,
 } = invoicesApi;
