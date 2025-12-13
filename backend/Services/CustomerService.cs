@@ -1,7 +1,10 @@
-﻿using backend.Repositories;
+﻿using backend.Models.Common;
+using backend.Models.Customers;
+using backend.Repositories;
 using backend.Services.Abstraction;
 using database;
 using database.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace backend.Services;
 
@@ -14,21 +17,99 @@ public class CustomerService : ICustomerService
         _repo = repo;
     }
 
-    public async Task<List<CustomerListItemDto>> GetCustomersAsync(int userId, string? search)
-    {
-        var customers = await _repo.GetAllAsync(userId, search);
+public async Task<PagedResult<CustomerListItemDto>> GetCustomersAsync(
+    int userId,
+    CustomerListQuery q)
+{
+    var query = _repo.Query(userId);
 
-        return customers.Select(c => new CustomerListItemDto
+    // TEXT FILTERS
+    if (!string.IsNullOrWhiteSpace(q.Name))
+        query = query.Where(c =>
+            c.Name.ToLower().Contains(q.Name.ToLower()));
+
+    if (!string.IsNullOrWhiteSpace(q.Ico))
+        query = query.Where(c =>
+            c.Ico != null && c.Ico.Contains(q.Ico));
+
+    if (!string.IsNullOrWhiteSpace(q.Dic))
+        query = query.Where(c =>
+            c.Dic != null && c.Dic.Contains(q.Dic));
+
+    if (!string.IsNullOrWhiteSpace(q.Email))
+        query = query.Where(c =>
+            c.Email != null && c.Email.ToLower().Contains(q.Email.ToLower()));
+
+    if (!string.IsNullOrWhiteSpace(q.Phone))
+        query = query.Where(c =>
+            c.Phone != null && c.Phone.Contains(q.Phone));
+
+    if (!string.IsNullOrWhiteSpace(q.City))
+        query = query.Where(c =>
+            c.Address != null &&
+            c.Address.City != null &&
+            c.Address.City.ToLower().Contains(q.City.ToLower()));
+
+    if (!string.IsNullOrWhiteSpace(q.CountryCode))
+        query = query.Where(c =>
+            c.Address != null &&
+            c.Address.CountryCode == q.CountryCode);
+
+    // TOTAL COUNT
+    var total = await query.CountAsync();
+
+    // SORT
+    query = q.SortBy switch
+    {
+        "name" => q.Desc
+            ? query.OrderByDescending(c => c.Name)
+            : query.OrderBy(c => c.Name),
+
+        "ico" => q.Desc
+            ? query.OrderByDescending(c => c.Ico)
+            : query.OrderBy(c => c.Ico),
+
+        "email" => q.Desc
+            ? query.OrderByDescending(c => c.Email)
+            : query.OrderBy(c => c.Email),
+
+        "city" => q.Desc
+            ? query.OrderByDescending(c => c.Address!.City)
+            : query.OrderBy(c => c.Address!.City),
+
+        "createdAt" => q.Desc
+            ? query.OrderByDescending(c => c.CreatedAt)
+            : query.OrderBy(c => c.CreatedAt),
+
+        _ => query.OrderBy(c => c.Name)
+    };
+
+    // PAGING
+    query = query
+        .Skip((q.Page - 1) * q.PageSize)
+        .Take(q.PageSize);
+
+    // PROJECTION
+    var items = await query
+        .Select(c => new CustomerListItemDto
         {
             Id = c.Id,
             Name = c.Name,
             Ico = c.Ico,
             Email = c.Email,
-            City = c.Address?.City
-        }).ToList();
-    }
+            City = c.Address != null ? c.Address.City : null
+        })
+        .ToListAsync();
 
-    public async Task<CustomerDto?> GetCustomerAsync(int userId, int id)
+    return new PagedResult<CustomerListItemDto>
+    {
+        Items = items,
+        TotalCount = total
+    };
+}
+
+
+public async Task<CustomerDto?> GetCustomerAsync(int userId, int id)
     {
         var c = await _repo.GetByIdAsync(userId, id);
         if (c == null) return null;

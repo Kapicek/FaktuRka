@@ -7,4 +7,6 @@ public interface ICustomerRepository
     Task<Customer?> GetByIcoAsync(int userId, string ico);
     Task AddAsync(Customer customer);
     Task SaveChangesAsync();
+    IQueryable<Customer> Query(int userId);
+
 }
