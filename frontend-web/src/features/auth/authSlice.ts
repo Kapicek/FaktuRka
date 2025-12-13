@@ -14,12 +14,22 @@ export type AuthState = {
     profile: UserProfile | null;
 };
 
+const getStoredProfile = () => {
+    if (typeof localStorage === "undefined") return null;
+    const stored = localStorage.getItem("auth_profile");
+    if (!stored) return null;
+    try {
+        return JSON.parse(stored);
+    } catch {
+        localStorage.removeItem("auth_profile");
+        return null;
+    }
+};
+
 const initialState: AuthState = {
     token: typeof localStorage !== "undefined" ? localStorage.getItem("auth_token") : null,
     user: null,
-    profile: typeof localStorage !== "undefined"
-        ? JSON.parse(localStorage.getItem("auth_profile") ?? "null")
-        : null,
+    profile: getStoredProfile(),
 };
 
 const parseJwt = (token?: string | null): JwtUser | null => {
@@ -48,11 +58,15 @@ export const authSlice = createSlice({
     name: "auth",
     initialState,
     reducers: {
-        setCredentials: (state, { payload }: PayloadAction<{ token: string }>) => {
+        setCredentials: (state, { payload }: PayloadAction<{ token: string; remember?: boolean }>) => {
             state.token = payload.token;
             state.user = parseJwt(payload.token);
             state.profile = null;
-            localStorage.setItem("auth_token", payload.token);
+            if (payload.remember) {
+                localStorage.setItem("auth_token", payload.token);
+            } else {
+                localStorage.removeItem("auth_token");
+            }
             localStorage.removeItem("auth_profile");
         },
         logout: (state) => {
@@ -65,8 +79,7 @@ export const authSlice = createSlice({
         hydrateFromStorage: (state) => {
             const token = localStorage.getItem("auth_token");
             const user = parseJwt(token);
-            const profileRaw = localStorage.getItem("auth_profile");
-            const profile = profileRaw ? JSON.parse(profileRaw) : null;
+            const profile = getStoredProfile();
 
             state.token = user ? token : null;
             state.user = user;
@@ -80,14 +93,20 @@ export const authSlice = createSlice({
     },
     extraReducers: (builder) => {
         builder
-            .addMatcher(authApi.endpoints.login.matchFulfilled, (state, { payload }) => {
+            .addMatcher(authApi.endpoints.login.matchFulfilled, (state, { payload, meta }) => {
                 state.token = payload.token;
                 state.user = parseJwt(payload.token);
-                 state.profile = payload.profile ?? null;
-                localStorage.setItem("auth_token", payload.token);
-                if (payload.profile) {
-                    localStorage.setItem("auth_profile", JSON.stringify(payload.profile));
+                state.profile = payload.profile ?? null;
+                const remember = meta?.arg?.originalArgs?.rememberMe ?? true;
+                if (remember) {
+                    localStorage.setItem("auth_token", payload.token);
+                    if (payload.profile) {
+                        localStorage.setItem("auth_profile", JSON.stringify(payload.profile));
+                    } else {
+                        localStorage.removeItem("auth_profile");
+                    }
                 } else {
+                    localStorage.removeItem("auth_token");
                     localStorage.removeItem("auth_profile");
                 }
             })

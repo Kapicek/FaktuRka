@@ -1,10 +1,13 @@
 import LinearProgress from "@mui/material/LinearProgress";
 import { SignInPage } from "@toolpad/core/SignInPage";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
-import { selectToken } from "../features/auth/authSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { logout, selectToken } from "../features/auth/authSlice";
 import { useLoginMutation, useGoogleLoginMutation } from "../features/auth/authApi";
 import { Box, Checkbox, FormControlLabel, Link, useTheme } from "@mui/material";
+import { Link as RouterLink } from "react-router-dom";
+import { useEffect } from "react";
+import { baseApi } from "../features/api/baseApi";
 
 type Provider = { id: "credentials" | string; name?: string };
 
@@ -37,13 +40,11 @@ const RememberMeCheckbox = () => {
     );
 }
 
-const SignUpLink = () => {
-    return (
-        <Link href="/" variant="body2">
-            Sign up
-        </Link>
-    );
-}
+const SignUpLink = () => (
+    <Link component={RouterLink} to="/sign-up" variant="body2">
+        Sign up
+    </Link>
+);
 
 const ForgotPasswordLink = () => {
     return (
@@ -55,11 +56,17 @@ const ForgotPasswordLink = () => {
 
 export default function SignIn() {
     const token = useSelector(selectToken);
+    const dispatch = useDispatch();
     const [params] = useSearchParams();
     const navigate = useNavigate();
     const callbackUrl = params.get("callbackUrl") || "/";
     const [login] = useLoginMutation();
     const [googleLogin] = useGoogleLoginMutation();
+
+    useEffect(() => {
+        dispatch(logout());
+        dispatch(baseApi.util.resetApiState());
+    }, [dispatch]);
 
     if (token === undefined) return <LinearProgress />;
     if (token) {
@@ -162,11 +169,12 @@ export default function SignIn() {
 
                     const email = (formData?.get("email") as string) ?? "";
                     const password = (formData?.get("password") as string) ?? "";
+                    const rememberMe = (formData?.get("remember") as string) === "true";
 
                     if (!email || !password) return { error: "Email and password are required" };
 
                     try {
-                        await login({ email, password }).unwrap();
+                        await login({ email, password, rememberMe }).unwrap();
                         navigate(targetUrl, { replace: true });
                         return {};
                     } catch (e: unknown) {

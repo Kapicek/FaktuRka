@@ -3,14 +3,16 @@ import { baseApi } from "../api/baseApi";
 // ====== Request payloads (attributes) ======
 
 export type RegisterAttributes = {
-    username: string;
     email: string;
     password: string;
+    firstName: string;
+    lastName: string;
 };
 
 export type LoginAttributes = {
     email: string;
     password: string;
+    rememberMe?: boolean;
 };
 
 export type PasswordResetRequestAttributes = {
@@ -66,7 +68,7 @@ export const authApi = baseApi.injectEndpoints({
         // ===== Registration =====
         register: build.mutation<ActionResponse, RegisterAttributes>({
             query: (attrs) => ({
-                url: "/auth/register",
+                url: "/Auth/register",
                 method: "POST",
                 body: attrs,
             }),
@@ -74,8 +76,8 @@ export const authApi = baseApi.injectEndpoints({
 
         // ===== Klasický login =====
         login: build.mutation<AuthResponse, LoginAttributes>({
-            query: (attrs) => ({
-                url: "/auth/login",
+            query: ({ rememberMe: _remember, ...attrs }) => ({
+                url: "/Auth/login",
                 method: "POST",
                 body: attrs,
             }),
@@ -84,7 +86,7 @@ export const authApi = baseApi.injectEndpoints({
         // ===== Google Login =====
         googleLogin: build.mutation<AuthResponse, GoogleLoginAttributes>({
             query: (attrs) => ({
-                url: "/auth/google",
+                url: "/Auth/google",
                 method: "POST",
                 body: attrs,
             }),
