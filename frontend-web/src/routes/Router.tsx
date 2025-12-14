@@ -10,6 +10,7 @@ import CustomersForm from "../pages/CustomersForm";
 import InvoicesForm from "../pages/InvoicesForm";
 import InvoicesDetail from "../pages/InvoicesDetail";
 import Profile from "../pages/Profile";
+import Settings from "../pages/Settings";
 
 export const router = createBrowserRouter([
     {
@@ -33,6 +34,7 @@ export const router = createBrowserRouter([
                             { index: true, path: "customers/new", element: <CustomersForm /> },
                             { index: true, path: "customers/:id/update", element: <CustomersForm /> },
                             { index: true, path: "profile", element: <Profile />, handle: { breadcrumb: "Profile" } },
+                            { index: true, path: "settings", element: <Settings />, handle: { breadcrumb: "Settings" } },
                         ],
                     },
                 ],

@@ -27,7 +27,6 @@ import { useTheme } from "@mui/material/styles";
 import { API_BASE_URL } from "../features/api/baseApi";
 import { useSelector } from "react-redux";
 import { selectToken } from "../features/auth/authSlice";
-
 const formatCurrency = (value?: number, currency = "CZK") => {
     if (typeof value !== "number") return "-";
     return new Intl.NumberFormat(undefined, {

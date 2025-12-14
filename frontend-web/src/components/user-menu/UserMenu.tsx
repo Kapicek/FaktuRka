@@ -96,7 +96,10 @@ const UserMenu = () => {
                     </ListItemIcon>
                     Profile
                 </MenuItem>
-                <MenuItem onClick={handleClose}>
+                <MenuItem onClick={() => {
+                    handleClose();
+                    navigate("/settings");
+                }}>
                     <ListItemIcon>
                         <Settings fontSize="small" />
                     </ListItemIcon>

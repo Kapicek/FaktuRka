@@ -33,19 +33,9 @@ import {
     useListCustomersQuery,
     type Customer,
 } from "../features/customers/customersApi";
-
-type CurrencyOption = {
-    code: string;
-    label: string;
-};
-
-const currencyOptions: CurrencyOption[] = [
-    { code: "CZK", label: "Czech koruna (CZK)" },
-    { code: "EUR", label: "Euro (EUR)" },
-    { code: "USD", label: "US Dollar (USD)" },
-    { code: "GBP", label: "British Pound (GBP)" },
-    { code: "PLN", label: "Polish Zloty (PLN)" },
-];
+import { useSelector } from "react-redux";
+import { selectPreferredCurrency } from "../features/settings/settingsSlice";
+import { CURRENCY_OPTIONS, type CurrencyOption } from "../constants/currencies";
 
 type TaxModeOption = {
     value: number;
@@ -119,6 +109,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 const InvoicesForm: React.FC = () => {
     const navigate = useNavigate();
+    const preferredCurrency = useSelector(selectPreferredCurrency);
     const { id: editInvoiceParam } = useParams<{ id?: string }>();
     const location = useLocation();
     const duplicateInvoiceId =
@@ -143,6 +134,7 @@ const InvoicesForm: React.FC = () => {
         handleSubmit,
         control,
         reset,
+        setValue,
         formState: { isSubmitting },
     } = useForm<InvoiceFormValues>({
         resolver: zodResolver(invoiceSchema) as any,
@@ -152,7 +144,7 @@ const InvoicesForm: React.FC = () => {
             issueDate: today(),
             dueDate: today(),
             supplyDate: today(),
-            currency: "CZK",
+            currency: preferredCurrency,
             taxMode: 0,
             vatRateDefault: 21,
             variableSymbol: "",
@@ -177,8 +169,9 @@ const InvoicesForm: React.FC = () => {
         name: "items",
     });
 
-    const { data: customers = [], isLoading: customersLoading } =
+    const { data: customersData, isLoading: customersLoading } =
         useListCustomersQuery();
+    const customers = customersData?.items ?? [];
 
     React.useEffect(() => {
         if (!templateInvoice) return;
@@ -205,6 +198,12 @@ const InvoicesForm: React.FC = () => {
             })),
         });
     }, [templateInvoice, reset]);
+
+    React.useEffect(() => {
+        if (mode === "create" && !templateInvoiceId) {
+            setValue("currency", preferredCurrency);
+        }
+    }, [mode, templateInvoiceId, preferredCurrency, setValue]);
 
     if (templateInvoiceId && isFetchingTemplate) {
         return (
@@ -485,11 +484,11 @@ const InvoicesForm: React.FC = () => {
                                                     control={control}
                                                     render={({ field, fieldState }) => (
                                                         <Autocomplete<CurrencyOption, false, false, false>
-                                                            options={currencyOptions}
+                                                            options={CURRENCY_OPTIONS}
                                                             getOptionLabel={(option) => option.label}
                                                             sx={{ flex: 1 }}
                                                             value={
-                                                                currencyOptions.find((opt) => opt.code === field.value) ?? null
+                                                                CURRENCY_OPTIONS.find((opt) => opt.code === field.value) ?? null
                                                             }
                                                             onChange={(_, newValue) => {
                                                                 field.onChange(newValue ? newValue.code : "");
