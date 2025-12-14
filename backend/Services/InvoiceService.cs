@@ -73,6 +73,10 @@ public class InvoiceService : IInvoiceService
         if (q.TotalMax.HasValue)
             query = query.Where(i => i.Total <= q.TotalMax.Value);
 
+        // STATUS
+        if (q.Status.HasValue)
+            query = query.Where(i => i.Status == q.Status);
+
 
         // TOTAL COUNT 
         var total = await query.CountAsync();
