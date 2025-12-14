@@ -1,7 +1,7 @@
 import React from "react";
 import { Autocomplete, Box, Card, CardContent, Grid, Stack, TextField, Typography } from "@mui/material";
 import type { ChipProps } from "@mui/material";
-import { useTheme } from "@mui/material/styles";
+import { alpha, useTheme } from "@mui/material/styles";
 import type { Theme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { BarChart } from "@mui/x-charts/BarChart";
@@ -40,13 +40,13 @@ const STATUS_FILTER_OPTIONS = Object.entries(STATUS_CONFIG).map(([key, config]) 
     chip: config,
 }));
 
-const getStatusColor = (palette: Theme["palette"], chipColor: ChipProps["color"]) => {
+const getStatusColor = (theme: Theme, chipColor: ChipProps["color"]) => {
     if (chipColor === "default" || !chipColor) {
-        return palette.text.secondary;
+        return theme.palette.mode === "dark" ? "#FFFFFF" : theme.palette.grey[600];
     }
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const colorFromPalette = (palette as any)[chipColor]?.main;
-    return colorFromPalette ?? palette.primary.main;
+    const colorFromPalette = (theme.palette as any)[chipColor]?.main;
+    return colorFromPalette ?? theme.palette.primary.main;
 };
 
 
@@ -92,45 +92,14 @@ const InvoicesDashboardCharts = () => {
         }
     }
 
-    // mapování barev podle STATUS_CONFIG (default/info/primary/warning/success/error)
-    const statusPieData = [
-        {
-            id: "Draft",
-            label: "Draft",
-            value: statusCounts[InvoiceStatus.Draft],
-            color: theme.palette.text.secondary, // "default"
-        },
-        {
-            id: "Issued",
-            label: "Issued",
-            value: statusCounts[InvoiceStatus.Issued],
-            color: theme.palette.info.main,
-        },
-        {
-            id: "Sent",
-            label: "Sent",
-            value: statusCounts[InvoiceStatus.Sent],
-            color: theme.palette.primary.main,
-        },
-        {
-            id: "Overdue",
-            label: "Overdue",
-            value: statusCounts[InvoiceStatus.Overdue],
-            color: theme.palette.warning.main,
-        },
-        {
-            id: "Paid",
-            label: "Paid",
-            value: statusCounts[InvoiceStatus.Paid],
-            color: theme.palette.success.main,
-        },
-        {
-            id: "Cancelled",
-            label: "Cancelled",
-            value: statusCounts[InvoiceStatus.Cancelled],
-            color: theme.palette.error.main,
-        },
-    ].filter((d) => d.value > 0); // prázdné statusy vyhodíme, ať není koláč flekatý nulami
+    const statusPieData = Object.entries(STATUS_CONFIG)
+        .map(([key, config]) => ({
+            id: config.label,
+            label: config.label,
+            value: statusCounts[Number(key) as InvoiceStatus],
+            color: getStatusColor(theme, config.color),
+        }))
+        .filter((d) => d.value > 0); // prázdné statusy vyhodíme, ať není koláč flekatý nulami
 
     const issuedInvoices = invoices.filter((inv) => inv.status !== InvoiceStatus.Paid);
     const paidInvoices = invoices.filter((inv) => inv.status === InvoiceStatus.Paid);
@@ -145,7 +114,11 @@ const InvoicesDashboardCharts = () => {
 
     const [selectedStatus, setSelectedStatus] = React.useState<InvoiceStatus>(InvoiceStatus.Draft);
     const selectedStatusOption = STATUS_FILTER_OPTIONS.find((opt) => opt.value === selectedStatus);
-    const statusColor = getStatusColor(theme.palette, selectedStatusOption?.chip.color ?? "primary");
+    const statusColor = getStatusColor(theme, selectedStatusOption?.chip.color ?? "primary");
+    const gradientId = React.useMemo(
+        () => `status-area-gradient-${selectedStatus}-${theme.palette.mode}`,
+        [selectedStatus, theme.palette.mode]
+    );
 
     const invoicesByStatus = invoices.filter((inv) => inv.status === selectedStatus);
     const statusAmount = invoicesByStatus.reduce(
@@ -223,7 +196,7 @@ const InvoicesDashboardCharts = () => {
                                         data: issuedVsPaidChartData.map((item) => item.label),
                                         tickLabelStyle: { display: "none" },
                                         tickSize: 0,
-                                        categoryGapRatio: 0.25,
+                                        categoryGapRatio: 0.3,
                                         barGapRatio: 0,
                                         position: "none",
                                     },
@@ -275,17 +248,11 @@ const InvoicesDashboardCharts = () => {
                                     )}
                                     renderOption={(props, option) => {
                                         const Icon = option.chip.icon;
+                                        const optionColor = getStatusColor(theme, option.chip.color);
                                         return (
                                             <li {...props} key={option.value}>
                                                 <Stack direction="row" spacing={1} alignItems="center">
-                                                    <Icon
-                                                        fontSize="small"
-                                                        color={
-                                                            option.chip.color === "default"
-                                                                ? "inherit"
-                                                                : option.chip.color
-                                                        }
-                                                    />
+                                                    <Icon fontSize="small" sx={{ color: optionColor }} />
                                                     <Typography variant="body2">{option.label}</Typography>
                                                 </Stack>
                                             </li>
@@ -306,7 +273,8 @@ const InvoicesDashboardCharts = () => {
                                         {statusCount} {statusCount === 1 ? "invoice" : "invoices"}
                                     </Typography>
                                 </Stack>
-                                <Box sx={{ flex: 1, width: "100%", height: 80 }}>
+                                <Box sx={{ flex: 1, minWidth: 200, height: 90 }}>
+
                                     <SparkLineChart
                                         data={statusSparklineData}
                                         height={90}
@@ -316,15 +284,27 @@ const InvoicesDashboardCharts = () => {
                                         baseline="min"
                                         color={statusColor}
                                         curve="linear"
-                                        margin={{ top: 12, bottom: 6, left: 6, right: 0 }}
+                                        margin={{ top: 10, bottom: 0, left: 6, right: 0 }}
                                         slotProps={{
-                                            area: { style: { fillOpacity: 0.15 } },
-                                            line: { style: { strokeWidth: 3 } },
+                                            area: {
+                                                style: {
+                                                    fill: `url(#${gradientId})`,
+                                                },
+                                            },
+                                            line: { style: { stroke: statusColor, strokeWidth: 3 } },
                                         }}
                                         valueFormatter={(value) =>
                                             typeof value === "number" ? currencyFormatter.format(value) : ""
                                         }
                                     />
+                                    <svg width="0" height="0">
+                                        <defs>
+                                            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+                                                <stop offset="0%" stopColor={alpha(statusColor, 0.4)} />
+                                                <stop offset="100%" stopColor={alpha(statusColor, 0)} />
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
                                 </Box>
                             </Stack>
                         </Stack>
