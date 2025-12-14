@@ -348,6 +348,7 @@ public class InvoiceService : IInvoiceService
         return new InvoiceDetailDto
         {
             Id = i.Id,
+            UserId = i.UserId,
             NumberFull = i.NumberFull,
             VariableSymbol = i.VariableSymbol,
             Status = i.Status,

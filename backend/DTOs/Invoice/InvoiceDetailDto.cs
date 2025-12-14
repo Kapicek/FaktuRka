@@ -5,6 +5,7 @@ namespace backend.Models.Invoices;
 public class InvoiceDetailDto
 {
     public int Id { get; set; }
+    public int UserId { get; set; }
     public string NumberFull { get; set; } = default!;
     public string? VariableSymbol { get; set; }
     public InvoiceStatus Status { get; set; }
