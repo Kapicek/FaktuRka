@@ -27,12 +27,13 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_URLS: "http://+:8080"
-      ConnectionStrings__DefaultConnection: "Host=db;Port=5432;Database=fakturka;Username=postgres;Password=postgres"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__Default: "Host=db;Port=5432;Database=fakturka;Username=postgres;Password=postgres"
     depends_on:
       db:
         condition: service_healthy
     ports:
-      - "8080:8080"
+      - "7010:8080"
 
   web:
     build:
@@ -43,7 +44,9 @@ services:
     depends_on:
       - api
     ports:
-      - "3000:80"
+      - "5173:5173"
+    environment:
+      VITE_API_URL: "http://localhost:7010"
 
 volumes:
   pgdata:
