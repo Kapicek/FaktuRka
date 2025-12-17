@@ -349,7 +349,7 @@ const InvoicesDetail = () => {
                 setStatusFeedback({ type: "error", message: String(message) });
             }
         },
-        [invoice, refetch, updateInvoice]
+        [dispatch, invoice, refetch, updateInvoice]
     );
 
     const statusConfig = invoice ? STATUS_CONFIG[invoice.status as InvoiceStatus] : undefined;
