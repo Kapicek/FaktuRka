@@ -110,7 +110,7 @@ export default function CustomersDatagrid() {
     ], [handleDeleteClick, navigate, fetchCustomer]);
 
     return (
-        <Box sx={{ flexGrow: 1, width: "100%" }}>
+        <Box sx={{ flexGrow: 1, width: "100%", overflowX: "auto" }}>
             <DataGrid
                 rows={customers}
                 loading={isLoading}

@@ -298,27 +298,29 @@ export default function InvoicesDatagrid({ onSelectionContextChange }: InvoicesD
                 customersLoading={customersLoading}
             />
 
-            <DataGrid
-                rows={invoices}
-                loading={isLoading}
-                columns={columns}
-                sortingMode="server"
-                sortModel={sortModel}
-                onSortModelChange={(model) => setSortModel(model)}
-                paginationMode="server"
-                rowCount={rowCount}
-                paginationModel={paginationModel}
-                onPaginationModelChange={setPaginationModel}
-                pageSizeOptions={[10, 25, 50]}
-                checkboxSelection
-                disableRowSelectionOnClick
-                rowSelectionModel={rowSelectionModel}
-                onRowSelectionModelChange={(model) =>
-                    updateSelectedRows(extractSelectedIds(model, currentPageRowIds))
-                }
-                disableRowSelectionExcludeModel
-                sx={{ flex: 1 }}
-            />
+            <Stack direction="row" sx={{ overflowX: "auto", flexGrow: 1 }}>
+                <DataGrid
+                    rows={invoices}
+                    loading={isLoading}
+                    columns={columns}
+                    sortingMode="server"
+                    sortModel={sortModel}
+                    onSortModelChange={(model) => setSortModel(model)}
+                    paginationMode="server"
+                    rowCount={rowCount}
+                    paginationModel={paginationModel}
+                    onPaginationModelChange={setPaginationModel}
+                    pageSizeOptions={[10, 25, 50]}
+                    checkboxSelection
+                    disableRowSelectionOnClick
+                    rowSelectionModel={rowSelectionModel}
+                    onRowSelectionModelChange={(model) =>
+                        updateSelectedRows(extractSelectedIds(model, currentPageRowIds))
+                    }
+                    disableRowSelectionExcludeModel
+                    sx={{ flex: 1 }}
+                />
+            </Stack>
 
             <ConfirmDialog
                 open={Boolean(selectedInvoice)}
