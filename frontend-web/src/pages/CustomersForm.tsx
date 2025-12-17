@@ -25,6 +25,7 @@ import {
 } from "../features/customers/customersApi";
 
 import { ArrowBackRounded, PersonAddAlt1Rounded } from "@mui/icons-material";
+import { ensureVatIdFormat, VAT_ID_FORMAT_MESSAGE } from "../utils/vatId";
 
 /** ====== Zod schema & typy ====== */
 
@@ -42,7 +43,12 @@ const customerSchema = z.object({
             (val) => !val || icoRegex.test(val),
             "IČO must have 8 digits"
         ),
-    dic: z.string().trim().optional(),
+    dic: z
+        .string()
+        .trim()
+        .optional()
+        .or(z.literal(""))
+        .refine((val) => ensureVatIdFormat(val), { message: VAT_ID_FORMAT_MESSAGE }),
     legalForm: z.string().trim().optional(),
     email: z.string().email("Invalid email").optional().or(z.literal("")),
     phone: z.string().trim().optional(),

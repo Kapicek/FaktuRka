@@ -16,13 +16,19 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useGetMyProfileQuery, useUpdateProfileMutation } from "../features/profile/profileApi";
 import type { UserProfile } from "../features/auth/authApi";
+import { ensureVatIdFormat, VAT_ID_FORMAT_MESSAGE } from "../utils/vatId";
 
 const profileSchema = z.object({
     fullName: z.string().trim().min(1, "Full name is required"),
     email: z.string().trim().min(1, "Email is required").email("Invalid email"),
     companyName: z.string().trim().optional().or(z.literal("")),
     ico: z.string().trim().optional().or(z.literal("")),
-    dic: z.string().trim().optional().or(z.literal("")),
+    dic: z
+        .string()
+        .trim()
+        .optional()
+        .or(z.literal(""))
+        .refine((val) => ensureVatIdFormat(val), { message: VAT_ID_FORMAT_MESSAGE }),
     vatPayer: z.boolean(),
     avatarUrl: z.string().trim().optional().or(z.literal("")),
 });
@@ -187,7 +193,13 @@ const Profile: React.FC = () => {
                                     name="dic"
                                     control={control}
                                     render={({ field }) => (
-                                        <TextField {...field} placeholder="CZ00000000" fullWidth />
+                                        <TextField
+                                            {...field}
+                                            placeholder="CZ00000000"
+                                            error={!!errors.dic}
+                                            helperText={errors.dic?.message}
+                                            fullWidth
+                                        />
                                     )}
                                 />
                             </Stack>
