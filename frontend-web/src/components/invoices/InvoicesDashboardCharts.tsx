@@ -273,11 +273,11 @@ const InvoicesDashboardCharts = () => {
                                         {statusCount} {statusCount === 1 ? "invoice" : "invoices"}
                                     </Typography>
                                 </Stack>
-                                <Box sx={{ flex: 1, minWidth: 200, height: 90 }}>
+                                <Box sx={{ flex: 1, width: "100%", height: 80 }}>
 
                                     <SparkLineChart
                                         data={statusSparklineData}
-                                        height={90}
+                                        height={80}
                                         showTooltip
                                         showHighlight
                                         area
