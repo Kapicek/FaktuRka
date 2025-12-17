@@ -33,6 +33,10 @@ export type GoogleLoginAttributes = {
     idToken: string;
 };
 
+export type ForgotPasswordAttributes = {
+    email: string;
+};
+
 export type UserProfile = {
     id: number;
     email: string;
@@ -92,6 +96,15 @@ export const authApi = baseApi.injectEndpoints({
             }),
         }),
 
+        // ===== Forgot password =====
+        forgotPassword: build.mutation<ActionResponse, ForgotPasswordAttributes>({
+            query: (attrs) => ({
+                url: "/Auth/forgot-password",
+                method: "POST",
+                body: attrs,
+            }),
+        }),
+
         // ===== Request password reset code =====
         requestPasswordReset: build.mutation<ActionResponse, PasswordResetRequestAttributes>({
             query: (attrs) => ({
@@ -126,6 +139,7 @@ export const {
     useRegisterMutation,
     useLoginMutation,
     useGoogleLoginMutation,
+    useForgotPasswordMutation,
     useRequestPasswordResetMutation,
     useResetPasswordMutation,
     useChangePasswordMutation,

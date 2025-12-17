@@ -4,7 +4,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectToken } from "../features/auth/authSlice";
 import { useLoginMutation, useGoogleLoginMutation } from "../features/auth/authApi";
-import { Box, Checkbox, FormControlLabel, Link, useTheme } from "@mui/material";
+import { Alert, Box, Checkbox, FormControlLabel, Link, useTheme } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { useEffect } from "react";
 import { baseApi } from "../features/api/baseApi";
@@ -48,7 +48,7 @@ const SignUpLink = () => (
 
 const ForgotPasswordLink = () => {
     return (
-        <Link href="/" variant="body2">
+        <Link component={RouterLink} to="/forgot-password" variant="body2">
             Forgot password?
         </Link>
     );
@@ -60,6 +60,8 @@ export default function SignIn() {
     const [params] = useSearchParams();
     const navigate = useNavigate();
     const callbackUrl = params.get("callbackUrl") || "/";
+    const resetStatus = params.get("reset");
+    const resetSuccess = resetStatus === "success";
     const [login] = useLoginMutation();
     const [googleLogin] = useGoogleLoginMutation();
 
@@ -131,6 +133,14 @@ export default function SignIn() {
                 padding: 2,
             }}
         >
+            {resetSuccess && (
+                <Alert
+                    severity="success"
+                    sx={{ width: "100%", maxWidth: 420, mb: 2 }}
+                >
+                    We sent a new password to your email. Please sign in with the new credentials.
+                </Alert>
+            )}
             <SignInPage
                 providers={[
                     { id: "credentials", name: "Email & password" },

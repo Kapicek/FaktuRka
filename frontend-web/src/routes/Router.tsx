@@ -4,6 +4,7 @@ import Layout from "../layouts/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import SignIn from "../pages/SignIn";
 import SignUp from "../pages/SignUp";
+import ForgotPassword from "../pages/ForgotPassword";
 import Customers from "../pages/Customers";
 import Invoices from "../pages/Invoices";
 import CustomersForm from "../pages/CustomersForm";
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
         children: [
             { path: "/sign-in", element: <SignIn /> },
             { path: "/sign-up", element: <SignUp /> },
+            { path: "/forgot-password", element: <ForgotPassword /> },
             {
                 path: "/",
                 element: <ProtectedRoute />,
