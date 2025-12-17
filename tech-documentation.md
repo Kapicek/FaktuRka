@@ -1,4 +1,4 @@
-# Fakturka – technická dokumentace (backend + database)
+# Fakturka – technická dokumentace
 
 ## Obsah
 1. [Přehled](#přehled)
@@ -18,10 +18,11 @@
 
 ## Přehled
 
-Projekt se skládá ze dvou .NET projektů a jednoho frontendového balíku:
+Projekt se skládá ze tří .NET projektů a jednoho frontendového balíku:
 
 - **`backend`** – ASP.NET Core Web API (REST), autentizace JWT, služby, kontrolery, PDF export faktur.
 - **`database`** – knihovna s **EF Core modely** (entity + enumy) sdílená s backendem.
+- **`backend.Tests`** – samostatný testovací projekt s unit a integračními testy backendu.
 - **`frontend-web`** – React 19 aplikace stavěná přes **Vite**, TypeScript + MUI, data načítá přes RTK Query a komunikuje s REST API z backendu.
 
 Aplikace je multitenantní na úrovni uživatele: téměř všechny dotazy filtrují data podle `UserId` (z JWT tokenu). V praxi to znamená: **uživatel vidí a spravuje pouze svoje zákazníky a faktury**.
@@ -41,6 +42,12 @@ Aplikace je multitenantní na úrovni uživatele: téměř všechny dotazy filtr
 ### Database (`database`, .NET 9)
 - **EF Core 9** + **Npgsql**
 - Obsahuje entity + enumy používané i v backendu (`database.Models.*`, `database.Models.Enums.*`)
+
+### Backend testy (`backend.Tests`, .NET 9)
+- **xUnit** – testovací framework
+- **Moq** – mockování závislostí
+- **EF Core InMemory** – databáze pro integrační testy
+- **coverlet.collector** – sběr code coverage
 
 ### Frontend (`frontend-web`, React + Vite)
 - **React 19 + TypeScript** (`vite`, `@vitejs/plugin-react`)
@@ -66,6 +73,13 @@ npm run cypress:run
 ## Testování
 
 - **Frontend** – end-to-end scénáře přes **Cypress** (viz `frontend-web/cypress/e2e/createCustomer.cy.ts`, `createInvoice.cy.ts`). Testují hlavní happy path: přihlášení, vytvoření zákazníka a faktury. Spuštění: `npm run cypress:open` pro interaktivní runner nebo `npm run cypress:run` pro headless CI.
+
+- **Backend** – testován pomocí samostatného projektu `backend.Tests`. Obsahuje:
+  - unit testy controllerů a služeb,
+  - integrační testy databázové vrstvy,
+  - integrační testy přes více vrstev aplikace (controller → service → repository → databáze).
+
+  Pro sběr pokrytí kódu je použit **coverlet.collector**. Testy lze spouštět z Visual Studia nebo pomocí `dotnet test`.
 
 ---
 
