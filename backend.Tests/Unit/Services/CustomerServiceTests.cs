@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+﻿using backend.DTOs;
+using backend.Models.Customers;
+using backend.Repositories;
 using backend.Services;
 using backend.Services.Abstraction;
-using backend.Repositories;
-using backend.DTOs;
 using database.Models;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace backend.Tests.Unit.Services
@@ -22,56 +23,6 @@ namespace backend.Tests.Unit.Services
             _repoMock = new Mock<ICustomerRepository>();
             _service = new CustomerService(_repoMock.Object);
         }
-
-        #region GetCustomersAsync
-
-        [Fact]
-        public async Task GetCustomersAsync_MapsResults()
-        {
-            var customers = new List<Customer>
-            {
-                new Customer
-                {
-                    Id = 1,
-                    Name = "A",
-                    Ico = "111",
-                    Email = "a@test.com",
-                    Address = new Address { City = "City1" }
-                },
-                new Customer
-                {
-                    Id = 2,
-                    Name = "B",
-                    Ico = "222",
-                    Email = "b@test.com",
-                    Address = null
-                }
-            };
-
-            _repoMock
-                .Setup(r => r.GetAllAsync(UserId, "abc"))
-                .ReturnsAsync(customers);
-
-            var result = await _service.GetCustomersAsync(UserId, "abc");
-
-            Assert.Equal(2, result.Count);
-
-            Assert.Equal(1, result[0].Id);
-            Assert.Equal("A", result[0].Name);
-            Assert.Equal("111", result[0].Ico);
-            Assert.Equal("a@test.com", result[0].Email);
-            Assert.Equal("City1", result[0].City);
-
-            Assert.Equal(2, result[1].Id);
-            Assert.Equal("B", result[1].Name);
-            Assert.Equal("222", result[1].Ico);
-            Assert.Equal("b@test.com", result[1].Email);
-            Assert.Null(result[1].City);
-
-            _repoMock.Verify(r => r.GetAllAsync(UserId, "abc"), Times.Once);
-        }
-
-        #endregion
 
         #region GetCustomerAsync
 

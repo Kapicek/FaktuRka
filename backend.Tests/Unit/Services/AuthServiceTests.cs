@@ -1,16 +1,16 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using System.Threading.Tasks;
+﻿using backend.DTOs.Auth;
 using backend.Services;
+using backend.Services.Abstraction;
 using database;
 using database.Models;
 using Google.Apis.Auth;
 using Microsoft.Extensions.Configuration;
 using Moq;
+using System;
+using System.Collections.Generic;
+using System.IdentityModel.Tokens.Jwt;
+using System.Threading.Tasks;
 using Xunit;
-using backend.DTOs.Auth;
 
 namespace backend.Tests.Unit.Services
 {
@@ -20,8 +20,12 @@ namespace backend.Tests.Unit.Services
         {
             private readonly GoogleJsonWebSignature.Payload _payload;
 
-            public TestAuthService(IUserRepository userRepository, IConfiguration configuration, GoogleJsonWebSignature.Payload payload)
-                : base(userRepository, configuration)
+            public TestAuthService(
+                IUserRepository userRepository,
+                IConfiguration configuration,
+                IEmailService emailService,
+                GoogleJsonWebSignature.Payload payload)
+                : base(userRepository, configuration, emailService)
             {
                 _payload = payload;
             }
@@ -67,6 +71,11 @@ namespace backend.Tests.Unit.Services
             };
         }
 
+        private static void EnsureUserRolesInitialized(User user)
+        {
+            user.UserRoles ??= new List<UserRole>();
+        }
+
         #region LoginWithGoogle - MissingConfiguration
 
         [Fact]
@@ -77,10 +86,10 @@ namespace backend.Tests.Unit.Services
                 .Build();
 
             var repoMock = new Mock<IUserRepository>();
-
+            var emailMock = new Mock<IEmailService>();
             var payload = CreatePayload();
 
-            var service = new TestAuthService(repoMock.Object, config, payload);
+            var service = new TestAuthService(repoMock.Object, config, emailMock.Object, payload);
 
             await Assert.ThrowsAsync<InvalidOperationException>(() =>
                 service.LoginWithGoogleAsync("dummy-token"));
@@ -95,22 +104,26 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
+            var emailMock = new Mock<IEmailService>();
 
             repoMock.Setup(r => r.GetByGoogleIdAsync("google-123"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             User? addedUser = null;
 
             repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
-                    .Callback<User>(u => addedUser = u)
-                    .ReturnsAsync((User u) => u);
+                .Callback<User>(u =>
+                {
+                    EnsureUserRolesInitialized(u);
+                    addedUser = u;
+                })
+                .ReturnsAsync((User u) => u);
 
             var payload = CreatePayload();
-
-            var service = new TestAuthService(repoMock.Object, config, payload);
+            var service = new TestAuthService(repoMock.Object, config, emailMock.Object, payload);
 
             var result = await service.LoginWithGoogleAsync("dummy-token");
 
@@ -128,6 +141,7 @@ namespace backend.Tests.Unit.Services
 
             Assert.NotNull(result.Profile);
             Assert.Equal(addedUser.Email, result.Profile.Email);
+            Assert.NotNull(result.Profile.Roles);
         }
 
         #endregion
@@ -139,6 +153,7 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
+            var emailMock = new Mock<IEmailService>();
 
             var existing = new User
             {
@@ -148,21 +163,21 @@ namespace backend.Tests.Unit.Services
                 LastName = "Name",
                 GoogleId = null,
                 AuthProvider = null,
-                AvatarUrl = null
+                AvatarUrl = null,
+                UserRoles = new List<UserRole>()
             };
 
             repoMock.Setup(r => r.GetByGoogleIdAsync("google-123"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync(existing);
+                .ReturnsAsync(existing);
 
             repoMock.Setup(r => r.SaveChangesAsync())
-                    .Returns(Task.CompletedTask);
+                .Returns(Task.CompletedTask);
 
             var payload = CreatePayload();
-
-            var service = new TestAuthService(repoMock.Object, config, payload);
+            var service = new TestAuthService(repoMock.Object, config, emailMock.Object, payload);
 
             var result = await service.LoginWithGoogleAsync("dummy-token");
 
@@ -174,6 +189,7 @@ namespace backend.Tests.Unit.Services
 
             Assert.Equal(existing.Id, result.Profile.Id);
             Assert.Equal(existing.Email, result.Profile.Email);
+            Assert.NotNull(result.Profile.Roles);
         }
 
         #endregion
@@ -185,6 +201,7 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
+            var emailMock = new Mock<IEmailService>();
 
             var existing = new User
             {
@@ -194,11 +211,12 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe",
                 GoogleId = "google-123",
                 AuthProvider = "Google",
-                AvatarUrl = "http://example.com/old.png"
+                AvatarUrl = "http://example.com/old.png",
+                UserRoles = new List<UserRole>()
             };
 
             repoMock.Setup(r => r.GetByGoogleIdAsync("google-123"))
-                    .ReturnsAsync(existing);
+                .ReturnsAsync(existing);
 
             var payload = CreatePayload(
                 googleId: "google-123",
@@ -209,9 +227,9 @@ namespace backend.Tests.Unit.Services
                 picture: "http://example.com/new.png");
 
             repoMock.Setup(r => r.SaveChangesAsync())
-                    .Returns(Task.CompletedTask);
+                .Returns(Task.CompletedTask);
 
-            var service = new TestAuthService(repoMock.Object, config, payload);
+            var service = new TestAuthService(repoMock.Object, config, emailMock.Object, payload);
 
             var result = await service.LoginWithGoogleAsync("dummy-token");
 
@@ -222,6 +240,7 @@ namespace backend.Tests.Unit.Services
 
             Assert.Equal(existing.Id, result.Profile.Id);
             Assert.Equal("new@test.com", result.Profile.Email);
+            Assert.NotNull(result.Profile.Roles);
         }
 
         #endregion
@@ -233,6 +252,7 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
+            var emailMock = new Mock<IEmailService>();
 
             var user = new User
             {
@@ -246,18 +266,18 @@ namespace backend.Tests.Unit.Services
                 Ico = "12345678",
                 Dic = "CZ12345678",
                 VatPayer = true,
-                AvatarUrl = "http://example.com/avatar.png"
+                AvatarUrl = "http://example.com/avatar.png",
+                UserRoles = new List<UserRole>()
             };
 
             repoMock.Setup(r => r.GetByGoogleIdAsync("google-123"))
-                    .ReturnsAsync(user);
+                .ReturnsAsync(user);
 
             repoMock.Setup(r => r.SaveChangesAsync())
-                    .Returns(Task.CompletedTask);
+                .Returns(Task.CompletedTask);
 
             var payload = CreatePayload();
-
-            var service = new TestAuthService(repoMock.Object, config, payload);
+            var service = new TestAuthService(repoMock.Object, config, emailMock.Object, payload);
 
             var result = await service.LoginWithGoogleAsync("dummy-token");
 
@@ -284,7 +304,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var request = new RegisterRequestDto
             {
@@ -294,8 +315,7 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe"
             };
 
-            await Assert.ThrowsAsync<ArgumentException>(() =>
-                service.RegisterAsync(request));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.RegisterAsync(request));
         }
 
         [Fact]
@@ -303,7 +323,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var request = new RegisterRequestDto
             {
@@ -313,8 +334,7 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe"
             };
 
-            await Assert.ThrowsAsync<ArgumentException>(() =>
-                service.RegisterAsync(request));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.RegisterAsync(request));
         }
 
         [Fact]
@@ -322,7 +342,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var request = new RegisterRequestDto
             {
@@ -332,8 +353,7 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe"
             };
 
-            await Assert.ThrowsAsync<ArgumentException>(() =>
-                service.RegisterAsync(request));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.RegisterAsync(request));
         }
 
         #endregion
@@ -345,7 +365,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var existing = new User
             {
@@ -353,11 +374,12 @@ namespace backend.Tests.Unit.Services
                 Email = "user@test.com",
                 PasswordHash = "somehash",
                 PasswordSalt = "somesalt",
-                AuthProvider = "Local"
+                AuthProvider = "Local",
+                UserRoles = new List<UserRole>()
             };
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync(existing);
+                .ReturnsAsync(existing);
 
             var request = new RegisterRequestDto
             {
@@ -367,8 +389,7 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe"
             };
 
-            await Assert.ThrowsAsync<InvalidOperationException>(() =>
-                service.RegisterAsync(request));
+            await Assert.ThrowsAsync<InvalidOperationException>(() => service.RegisterAsync(request));
         }
 
         [Fact]
@@ -376,7 +397,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var existing = new User
             {
@@ -386,14 +408,15 @@ namespace backend.Tests.Unit.Services
                 LastName = "User",
                 PasswordHash = null,
                 PasswordSalt = null,
-                AuthProvider = "Google"
+                AuthProvider = "Google",
+                UserRoles = new List<UserRole>()
             };
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync(existing);
+                .ReturnsAsync(existing);
 
             repoMock.Setup(r => r.SaveChangesAsync())
-                    .Returns(Task.CompletedTask);
+                .Returns(Task.CompletedTask);
 
             var request = new RegisterRequestDto
             {
@@ -411,6 +434,7 @@ namespace backend.Tests.Unit.Services
 
             Assert.NotNull(result);
             Assert.Equal(existing.Email, result.Profile.Email);
+            Assert.NotNull(result.Profile.Roles);
 
             repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
         }
@@ -424,16 +448,21 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             User? addedUser = null;
 
             repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
-                    .Callback<User>(u => addedUser = u)
-                    .ReturnsAsync((User u) => u);
+                .Callback<User>(u =>
+                {
+                    EnsureUserRolesInitialized(u);
+                    addedUser = u;
+                })
+                .ReturnsAsync((User u) => u);
 
             var request = new RegisterRequestDto
             {
@@ -455,6 +484,7 @@ namespace backend.Tests.Unit.Services
 
             Assert.NotNull(result);
             Assert.Equal("user@test.com", result.Profile.Email);
+            Assert.NotNull(result.Profile.Roles);
 
             repoMock.Verify(r => r.AddAsync(It.IsAny<User>()), Times.Once);
             repoMock.Verify(r => r.SaveChangesAsync(), Times.Never);
@@ -469,7 +499,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var request = new LoginRequestDto
             {
@@ -477,8 +508,7 @@ namespace backend.Tests.Unit.Services
                 Password = " "
             };
 
-            await Assert.ThrowsAsync<ArgumentException>(() =>
-                service.LoginAsync(request));
+            await Assert.ThrowsAsync<ArgumentException>(() => service.LoginAsync(request));
         }
 
         [Fact]
@@ -486,10 +516,11 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             var request = new LoginRequestDto
             {
@@ -497,8 +528,7 @@ namespace backend.Tests.Unit.Services
                 Password = "Password123!"
             };
 
-            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-                service.LoginAsync(request));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.LoginAsync(request));
         }
 
         [Fact]
@@ -506,7 +536,8 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             var user = new User
             {
@@ -514,11 +545,12 @@ namespace backend.Tests.Unit.Services
                 Email = "user@test.com",
                 PasswordHash = null,
                 PasswordSalt = null,
-                AuthProvider = "Google"
+                AuthProvider = "Google",
+                UserRoles = new List<UserRole>()
             };
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync(user);
+                .ReturnsAsync(user);
 
             var request = new LoginRequestDto
             {
@@ -526,8 +558,7 @@ namespace backend.Tests.Unit.Services
                 Password = "Password123!"
             };
 
-            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-                service.LoginAsync(request));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.LoginAsync(request));
         }
 
         [Fact]
@@ -535,16 +566,21 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             User? addedUser = null;
 
             repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
-                    .Callback<User>(u => addedUser = u)
-                    .ReturnsAsync((User u) => u);
+                .Callback<User>(u =>
+                {
+                    EnsureUserRolesInitialized(u);
+                    addedUser = u;
+                })
+                .ReturnsAsync((User u) => u);
 
             var registerRequest = new RegisterRequestDto
             {
@@ -554,10 +590,10 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe"
             };
 
-            var registerResult = await service.RegisterAsync(registerRequest);
+            await service.RegisterAsync(registerRequest);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync(addedUser!);
+                .ReturnsAsync(addedUser!);
 
             var loginRequest = new LoginRequestDto
             {
@@ -565,8 +601,7 @@ namespace backend.Tests.Unit.Services
                 Password = "WrongPassword!"
             };
 
-            await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-                service.LoginAsync(loginRequest));
+            await Assert.ThrowsAsync<UnauthorizedAccessException>(() => service.LoginAsync(loginRequest));
         }
 
         [Fact]
@@ -574,17 +609,21 @@ namespace backend.Tests.Unit.Services
         {
             var config = CreateConfiguration();
             var repoMock = new Mock<IUserRepository>();
-            var service = new AuthService(repoMock.Object, config);
+            var emailMock = new Mock<IEmailService>();
+            var service = new AuthService(repoMock.Object, config, emailMock.Object);
 
-            // Registrace – vytvoří usera s hash/salt
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync((User?)null);
+                .ReturnsAsync((User?)null);
 
             User? addedUser = null;
 
             repoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
-                    .Callback<User>(u => addedUser = u)
-                    .ReturnsAsync((User u) => u);
+                .Callback<User>(u =>
+                {
+                    EnsureUserRolesInitialized(u);
+                    addedUser = u;
+                })
+                .ReturnsAsync((User u) => u);
 
             var registerRequest = new RegisterRequestDto
             {
@@ -594,13 +633,13 @@ namespace backend.Tests.Unit.Services
                 LastName = "Doe"
             };
 
-            var registerResult = await service.RegisterAsync(registerRequest);
+            await service.RegisterAsync(registerRequest);
 
             repoMock.Setup(r => r.GetByEmailAsync("user@test.com"))
-                    .ReturnsAsync(addedUser!);
+                .ReturnsAsync(addedUser!);
 
             repoMock.Setup(r => r.SaveChangesAsync())
-                    .Returns(Task.CompletedTask);
+                .Returns(Task.CompletedTask);
 
             var loginRequest = new LoginRequestDto
             {
@@ -613,6 +652,7 @@ namespace backend.Tests.Unit.Services
             Assert.NotNull(result);
             Assert.False(string.IsNullOrWhiteSpace(result.Token));
             Assert.Equal("user@test.com", result.Profile.Email);
+            Assert.NotNull(result.Profile.Roles);
 
             repoMock.Verify(r => r.SaveChangesAsync(), Times.Once);
         }

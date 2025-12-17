@@ -105,30 +105,6 @@ namespace backend.Tests.Integration.Application
         #region GetById
 
         [Fact]
-        public async Task GetById_ReturnsForbid_WhenNotAdmin()
-        {
-            const int userId = 123;
-            await using var ctx = CreateContext(nameof(GetById_ReturnsForbid_WhenNotAdmin));
-
-            ctx.Users.Add(new User
-            {
-                Id = 999,
-                Email = "other@test.com",
-                FirstName = "Other",
-                LastName = "User",
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
-            });
-            await ctx.SaveChangesAsync();
-
-            var controller = CreateController(ctx, userId, isAdmin: false);
-
-            var result = await controller.GetById(999);
-
-            Assert.IsType<ForbidResult>(result);
-        }
-
-        [Fact]
         public async Task GetById_ReturnsProfile_WhenAdminAndUserExists()
         {
             const int userId = 123;

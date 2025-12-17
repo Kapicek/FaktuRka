@@ -1,13 +1,15 @@
-﻿using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using backend.Controllers;
+﻿using backend.Controllers;
 using backend.DTOs;
 using backend.Infrastructure;
+using backend.Models.Common;
+using backend.Models.Customers;
 using backend.Services.Abstraction;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Moq;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace backend.Tests.Unit.Controllers
@@ -52,19 +54,34 @@ namespace backend.Tests.Unit.Controllers
         [Fact]
         public async Task GetList_ReturnsOk_WithCustomers()
         {
-            var list = new List<CustomerListItemDto> { new(), new() };
+            var query = new CustomerListQuery
+            {
+                Name = "abc"
+            };
 
-            _serviceMock.Setup(s => s.GetCustomersAsync(UserId, "abc"))
-                        .ReturnsAsync(list);
+            var pagedResult = new PagedResult<CustomerListItemDto>
+            {
+                Items = new List<CustomerListItemDto> { new(), new() },
+                TotalCount = 2
+            };
 
-            var result = await _controller.GetList("abc");
+            _serviceMock
+                .Setup(s => s.GetCustomersAsync(UserId, It.Is<CustomerListQuery>(
+                    q => q.Name == "abc")))
+                .ReturnsAsync(pagedResult);
+
+            var result = await _controller.GetList(query);
 
             var ok = Assert.IsType<OkObjectResult>(result);
-            var model = Assert.IsType<List<CustomerListItemDto>>(ok.Value);
-            Assert.Equal(2, model.Count);
+            var model = Assert.IsType<PagedResult<CustomerListItemDto>>(ok.Value);
 
-            _serviceMock.Verify(s => s.GetCustomersAsync(UserId, "abc"), Times.Once);
+            Assert.Equal(2, model.Items.Count);
+
+            _serviceMock.Verify(
+                s => s.GetCustomersAsync(UserId, It.IsAny<CustomerListQuery>()),
+                Times.Once);
         }
+
 
         #endregion
 

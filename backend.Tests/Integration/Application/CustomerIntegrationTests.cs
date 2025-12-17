@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Security.Claims;
-using System.Threading.Tasks;
-using backend.Controllers;
+﻿using backend.Controllers;
 using backend.DTOs;
 using backend.Infrastructure;
+using backend.Models.Common;
+using backend.Models.Customers;
 using backend.Repositories;
 using backend.Services;
 using backend.Services.Abstraction;
@@ -13,6 +11,10 @@ using database.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System;
+using System.Collections.Generic;
+using System.Security.Claims;
+using System.Threading.Tasks;
 using Xunit;
 
 namespace backend.Tests.Integration.Application
@@ -266,13 +268,18 @@ namespace backend.Tests.Integration.Application
 
             var controller = CreateController(ctx, userId);
 
-            var result = await controller.GetList("beta");
+            var query = new CustomerListQuery
+            {
+                Name = "beta"
+            };
+
+            var result = await controller.GetList(query);
 
             var ok = Assert.IsType<OkObjectResult>(result);
-            var list = Assert.IsType<List<CustomerListItemDto>>(ok.Value);
+            var paged = Assert.IsType<PagedResult<CustomerListItemDto>>(ok.Value);
 
-            Assert.Single(list);
-            Assert.Equal("Beta s.r.o.", list[0].Name);
+            Assert.Single(paged.Items);
+            Assert.Equal("Beta s.r.o.", paged.Items[0].Name);
         }
 
         #endregion

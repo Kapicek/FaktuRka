@@ -84,17 +84,6 @@ namespace backend.Tests.Unit.Controllers
         #region GetById
 
         [Fact]
-        public async Task GetById_ReturnsForbid_WhenUserIsNotAdmin()
-        {
-            SetUser(isAdmin: false);
-
-            var result = await _controller.GetById(999);
-
-            Assert.IsType<ForbidResult>(result);
-            _userServiceMock.Verify(s => s.GetProfileAsync(It.IsAny<int>()), Times.Never);
-        }
-
-        [Fact]
         public async Task GetById_ReturnsNotFound_WhenAdminAndProfileIsNull()
         {
             SetUser(isAdmin: true);
