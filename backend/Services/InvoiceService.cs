@@ -39,6 +39,10 @@ public class InvoiceService : IInvoiceService
     {
         var query = _invoiceRepo.Query(userId);
 
+        // CUSTOMER
+        if (q.CustomerId.HasValue)
+            query = query.Where(i => i.CustomerId == q.CustomerId.Value);
+
         // TEXT
         if (!string.IsNullOrWhiteSpace(q.Number))
             query = query.Where(i =>

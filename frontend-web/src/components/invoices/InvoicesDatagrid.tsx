@@ -25,15 +25,41 @@ import type { ListInvoicesArgs } from "../../features/invoices/invoicesApi";
 import ConfirmDialog from "../dialogs/ConfirmDialog";
 import { InvoicesFiltersToolbar } from "./InvoicesFiltersToolbar";
 import { InvoiceStatus, STATUS_CONFIG } from "./statusConfig";
+import type { InvoicesFiltersState, PeriodType } from "./filterTypes";
 import { selectToken } from "../../features/auth/authSlice";
 import { API_BASE_URL } from "../../features/api/baseApi";
 import dayjs from "dayjs";
 
-type FiltersState = {
-    status?: InvoiceStatus;
-    customerId?: number;
-    periodDate?: string;
-    overdueOnly?: boolean;
+const formatDay = (value: dayjs.Dayjs) => value.format("YYYY-MM-DD");
+
+const getIssueDateRange = (filters: InvoicesFiltersState): {
+    from?: string;
+    to?: string;
+} => {
+    if (!filters.periodValue) return {};
+    const base = dayjs(filters.periodValue);
+    if (!base.isValid()) return {};
+
+    switch (filters.periodType) {
+        case "day": {
+            const formatted = formatDay(base);
+            return { from: formatted, to: formatted };
+        }
+        case "month": {
+            return {
+                from: formatDay(base.startOf("month")),
+                to: formatDay(base.endOf("month")),
+            };
+        }
+        case "year": {
+            return {
+                from: formatDay(base.startOf("year")),
+                to: formatDay(base.endOf("year")),
+            };
+        }
+        default:
+            return {};
+    }
 };
 
 const extractSelectedIds = (
@@ -92,7 +118,9 @@ export default function InvoicesDatagrid({ onSelectionContextChange }: InvoicesD
     const navigate = useNavigate();
     const authToken = useSelector(selectToken);
 
-    const [filters, setFilters] = React.useState<FiltersState>({});
+    const [filters, setFilters] = React.useState<InvoicesFiltersState>({
+        periodType: "day",
+    });
     const [paginationModel, setPaginationModel] = React.useState({ page: 0, pageSize: 25 });
     const [sortModel, setSortModel] = React.useState<GridSortModel>([]);
     const [rowSelectionIds, setRowSelectionIds] = React.useState<Set<GridRowId>>(new Set());
@@ -100,11 +128,16 @@ export default function InvoicesDatagrid({ onSelectionContextChange }: InvoicesD
     const [selectedInvoice, setSelectedInvoice] = React.useState<InvoiceListItem | null>(null);
     const [isExportingSelected, setIsExportingSelected] = React.useState(false);
 
+    const issueDateRange = React.useMemo(
+        () => getIssueDateRange(filters),
+        [filters]
+    );
+
     const queryArgs: ListInvoicesArgs = {
         status: filters.status,
         customerId: filters.customerId,
-        issueDateFrom: filters.periodDate,
-        issueDateTo: filters.periodDate,
+        issueDateFrom: issueDateRange.from,
+        issueDateTo: issueDateRange.to,
         dueDateTo: filters.overdueOnly ? dayjs().format("YYYY-MM-DD") : undefined,
         page: paginationModel.page + 1,
         pageSize: paginationModel.pageSize,
@@ -130,7 +163,7 @@ export default function InvoicesDatagrid({ onSelectionContextChange }: InvoicesD
         [selectedRowsMap]
     );
 
-    const handleFiltersChange = React.useCallback((next: FiltersState) => {
+    const handleFiltersChange = React.useCallback((next: InvoicesFiltersState) => {
         setFilters(next);
         setPaginationModel((prev) => ({ ...prev, page: 0 }));
     }, []);
