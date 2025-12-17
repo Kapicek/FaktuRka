@@ -1,6 +1,7 @@
 import React from "react";
 import {
     Alert,
+    Autocomplete,
     Box,
     Button,
     Chip,
@@ -16,16 +17,26 @@ import {
     TableCell,
     TableHead,
     TableRow,
+    TextField,
     Typography,
 } from "@mui/material";
+import type { ChipProps } from "@mui/material";
 import { FileDownloadRounded, EditRounded } from "@mui/icons-material";
 import { useNavigate, useParams } from "react-router-dom";
 import dayjs from "dayjs";
-import { useGetInvoiceQuery, useExportInvoiceMutation, type Invoice } from "../features/invoices/invoicesApi";
-import { InvoiceStatus, STATUS_CONFIG } from "../components/invoices/statusConfig";
-import { useTheme } from "@mui/material/styles";
+import {
+    useGetInvoiceQuery,
+    useExportInvoiceMutation,
+    useUpdateInvoiceMutation,
+    type Invoice,
+    type InvoiceUpdateAttributes,
+    InvoiceStatus,
+    invoicesApi,
+} from "../features/invoices/invoicesApi";
+import { STATUS_CONFIG } from "../components/invoices/statusConfig";
+import { useTheme, type Theme } from "@mui/material/styles";
 import { API_BASE_URL } from "../features/api/baseApi";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { selectToken } from "../features/auth/authSlice";
 const formatCurrency = (value?: number, currency = "CZK") => {
     if (typeof value !== "number") return "-";
@@ -235,17 +246,117 @@ const InvoicePreview = ({ invoice }: { invoice: Invoice }) => {
     );
 };
 
+type StatusOption = {
+    value: InvoiceStatus;
+    label: string;
+    icon: React.ElementType;
+    chipColor: ChipProps["color"];
+};
+
+const getStatusColor = (theme: Theme, chipColor: ChipProps["color"]) => {
+    if (!chipColor || chipColor === "default") {
+        return theme.palette.mode === "dark" ? theme.palette.grey[300] : theme.palette.grey[600];
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const paletteColor = (theme.palette as any)[chipColor]?.main;
+    return paletteColor ?? theme.palette.text.primary;
+};
+
+const mapInvoiceToUpdatePayload = (
+    invoice: Invoice,
+    nextStatus: InvoiceStatus
+): InvoiceUpdateAttributes => {
+    if (!invoice.customerId) {
+        throw new Error("Missing customer reference");
+    }
+
+    return {
+        customerId: invoice.customerId,
+        sequenceId: invoice.sequenceId ?? undefined,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        supplyDate: invoice.supplyDate ?? invoice.issueDate,
+        currency: invoice.currency,
+        taxMode: invoice.taxMode,
+        vatRateDefault: invoice.vatRateDefault,
+        variableSymbol: invoice.variableSymbol,
+        notePublic: invoice.notePublic,
+        noteInternal: invoice.noteInternal,
+        items: invoice.items.map((item) => ({
+            name: item.name,
+            description: item.description,
+            quantity: item.quantity,
+            unit: item.unit,
+            unitPrice: item.unitPrice,
+            vatRate: item.vatRate,
+            discount: item.discount,
+        })),
+        status: nextStatus,
+    };
+};
+
 const InvoicesDetail = () => {
     const navigate = useNavigate();
     const params = useParams<{ id: string }>();
     const invoiceId = params.id ?? "";
     const [tab, setTab] = React.useState(0);
-    const { data: invoice, isLoading, isError } = useGetInvoiceQuery(invoiceId, { skip: !invoiceId });
+    const theme = useTheme();
+    const dispatch = useDispatch();
+    const { data: invoice, isLoading, isError, refetch } = useGetInvoiceQuery(invoiceId, {
+        skip: !invoiceId,
+    });
     const authToken = useSelector(selectToken);
     const [triggerExport, { isLoading: isExporting }] = useExportInvoiceMutation();
+    const [updateInvoice, { isLoading: isUpdatingStatus }] = useUpdateInvoiceMutation();
+    const [statusFeedback, setStatusFeedback] = React.useState<{
+        type: "success" | "error";
+        message: string;
+    } | null>(null);
+
+    const statusOptions = React.useMemo<StatusOption[]>(
+        () =>
+            Object.entries(STATUS_CONFIG).map(([key, cfg]) => ({
+                value: Number(key) as InvoiceStatus,
+                label: cfg.label,
+                icon: cfg.icon,
+                chipColor: cfg.color,
+            })),
+        []
+    );
+
+    const handleStatusChange = React.useCallback(
+        async (nextStatus: InvoiceStatus) => {
+            if (!invoice || nextStatus === invoice.status) return;
+            setStatusFeedback(null);
+            try {
+                const payload = mapInvoiceToUpdatePayload(invoice, nextStatus);
+                await updateInvoice({ id: invoice.id, body: payload }).unwrap();
+                dispatch(
+                    invoicesApi.util.invalidateTags([
+                        { type: "Invoice", id: "LIST" },
+                        { type: "Invoice", id: invoice.id },
+                    ])
+                );
+                setStatusFeedback({ type: "success", message: "Invoice status updated." });
+                await refetch();
+            } catch (error) {
+                const anyErr = error as { data?: any; message?: string };
+                const message =
+                    anyErr?.data?.message ??
+                    anyErr?.data?.error ??
+                    anyErr?.message ??
+                    "Failed to update invoice status.";
+                setStatusFeedback({ type: "error", message: String(message) });
+            }
+        },
+        [invoice, refetch, updateInvoice]
+    );
 
     const statusConfig = invoice ? STATUS_CONFIG[invoice.status as InvoiceStatus] : undefined;
     const StatusIcon = statusConfig?.icon;
+    const selectedStatusOption = invoice
+        ? statusOptions.find((opt) => opt.value === (invoice.status as InvoiceStatus)) ?? null
+        : null;
 
     if (!invoiceId) {
         return (
@@ -267,7 +378,12 @@ const InvoicesDetail = () => {
 
     return (
         <Stack direction="column" spacing={2} sx={{ flex: 1, height: "100%" }}>
-            <Stack direction={{ xs: "column", sm: "row" }} justifyContent="space-between" alignItems={{ xs: "flex-start", sm: "center" }} spacing={1}>
+            <Stack
+                direction={{ xs: "column", sm: "row" }}
+                justifyContent="space-between"
+                alignItems={{ xs: "flex-start", sm: "center" }}
+                spacing={1}
+            >
                 <Stack direction="row" spacing={2} alignItems="center">
                     <Typography variant='h5' fontWeight={600}>
                         {`Invoice #${invoice.numberFull}`}
@@ -284,11 +400,46 @@ const InvoicesDetail = () => {
                     )}
                 </Stack>
 
-                <Stack direction="row" spacing={1}>
+                <Stack
+                    direction="row"
+                    spacing={1}
+                    alignItems="center"
+                    flexWrap="wrap"
+                    justifyContent={{ xs: "flex-start", sm: "flex-end" }}
+                >
+                    <Autocomplete<StatusOption, false, true, false>
+                        options={statusOptions}
+                        value={selectedStatusOption}
+                        disableClearable
+                        onChange={(_, next) => {
+                            if (next) {
+                                void handleStatusChange(next.value);
+                            }
+                        }}
+                        size="small"
+                        sx={{ minWidth: 200 }}
+                        loading={isUpdatingStatus}
+                        renderInput={(params) => (
+                            <TextField {...params} label="Status" size="small" sx={{ backgroundColor: "background.default" }} />
+                        )}
+                        renderOption={(props, option) => {
+                            const OptionIcon = option.icon;
+                            const optionColor = getStatusColor(theme, option.chipColor);
+                            return (
+                                <li {...props} key={option.value}>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        <OptionIcon fontSize="small" sx={{ color: optionColor }} />
+                                        <Typography variant="body2">{option.label}</Typography>
+                                    </Stack>
+                                </li>
+                            );
+                        }}
+                        disabled={isUpdatingStatus}
+                    />
                     <Button
                         variant="outlined"
                         startIcon={<FileDownloadRounded />}
-                        sx={{ textTransform: "none" }}
+                        sx={{ textTransform: "none", backgroundColor: "background.default" }}
                         disabled={isExporting}
                         onClick={async () => {
                             if (!invoice) return;
@@ -314,6 +465,15 @@ const InvoicesDetail = () => {
                     </Button>
                 </Stack>
             </Stack>
+
+            {statusFeedback && (
+                <Alert
+                    severity={statusFeedback.type}
+                    onClose={() => setStatusFeedback(null)}
+                >
+                    {statusFeedback.message}
+                </Alert>
+            )}
 
             <Grid container spacing={3} sx={{ flexGrow: 1 }}>
                 <Grid size={{ xs: 12, lg: 7 }} sx={{ height: { lg: "100%" } }}>

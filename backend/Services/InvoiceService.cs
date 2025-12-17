@@ -349,6 +349,7 @@ public class InvoiceService : IInvoiceService
         {
             Id = i.Id,
             UserId = i.UserId,
+            CustomerId = i.CustomerId,
             NumberFull = i.NumberFull,
             VariableSymbol = i.VariableSymbol,
             Status = i.Status,
@@ -424,8 +425,18 @@ public class InvoiceService : IInvoiceService
         if (invoice == null || invoice.DeletedAt != null)
             return null;
 
-        if (invoice.Status != InvoiceStatus.Draft)
+        var statusChanged = request.Status.HasValue && request.Status.Value != invoice.Status;
+
+        if (invoice.Status != InvoiceStatus.Draft && !statusChanged)
             throw new InvalidOperationException("Only draft invoices can be edited.");
+
+        if (statusChanged && invoice.Status != InvoiceStatus.Draft)
+        {
+            invoice.Status = request.Status!.Value;
+            invoice.UpdatedAt = DateTimeOffset.UtcNow;
+            await _invoiceRepo.SaveChangesAsync();
+            return await GetInvoiceAsync(userId, id);
+        }
 
         invoice.IssueDate = request.IssueDate;
         invoice.DueDate = request.DueDate;
@@ -490,6 +501,11 @@ public class InvoiceService : IInvoiceService
         invoice.VatAmount = invoice.Items.Sum(i => i.LineVat);
         invoice.Total = invoice.Items.Sum(i => i.LineTotal);
         invoice.DiscountTotal = request.Items.Sum(i => i.Discount);
+
+        if (request.Status.HasValue)
+        {
+            invoice.Status = request.Status.Value;
+        }
 
         invoice.UpdatedAt = DateTimeOffset.UtcNow;
 

@@ -5,4 +5,5 @@ namespace backend.Models.Invoices;
 public class InvoiceUpdateRequest : InvoiceCreateRequest
 {
     public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.BankTransfer;
+    public InvoiceStatus? Status { get; set; }
 }

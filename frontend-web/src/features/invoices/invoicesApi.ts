@@ -1,12 +1,21 @@
 import { baseApi } from "../api/baseApi";
 
+export enum InvoiceStatus {
+    Draft = 0,
+    Issued = 1,
+    Sent = 2,
+    Overdue = 3,
+    Paid = 4,
+    Cancelled = 5,
+}
+
 // ===== Types =====
 
 // řádek v seznamu faktur (GET /api/Invoices)
 export type InvoiceListItem = {
     id: number;
     numberFull: string;
-    status: number;
+    status: InvoiceStatus;
     issueDate: string; // ISO date string
     dueDate: string; // ISO date string
     customerName: string;
@@ -23,7 +32,7 @@ export type InvoiceListResponse = {
 // query parametry dle Swaggeru
 export type ListInvoicesArgs = {
     customerId?: number;
-    status?: number;
+    status?: InvoiceStatus;
 
     issueDateFrom?: string; // "YYYY-MM-DD"
     issueDateTo?: string;
@@ -66,7 +75,7 @@ export type Invoice = {
     id: number;
     numberFull: string;
     variableSymbol: string;
-    status: number;
+    status: InvoiceStatus;
     customerId?: number;
     sequenceId?: number | null;
     issueDate: string;
@@ -125,7 +134,9 @@ export type InvoiceCreateAttributes = {
     items: InvoiceItemCreate[];
 };
 
-export type InvoiceUpdateAttributes = InvoiceCreateAttributes;
+export type InvoiceUpdateAttributes = InvoiceCreateAttributes & {
+    status?: InvoiceStatus;
+};
 
 export const invoicesApi = baseApi.injectEndpoints({
     endpoints: (build) => ({

@@ -6,15 +6,9 @@ import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 import type { ChipProps } from "@mui/material";
 import type { ElementType } from "react";
+import { InvoiceStatus } from "../../features/invoices/invoicesApi";
 
-export enum InvoiceStatus {
-    Draft = 0,
-    Issued = 1,
-    Sent = 2,
-    Overdue = 3,
-    Paid = 4,
-    Cancelled = 5,
-}
+export { InvoiceStatus };
 
 type StatusConfig = {
     label: string;

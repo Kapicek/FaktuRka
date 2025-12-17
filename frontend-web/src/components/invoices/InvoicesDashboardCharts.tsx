@@ -6,21 +6,11 @@ import type { Theme } from "@mui/material/styles";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { SparkLineChart } from "@mui/x-charts/SparkLineChart";
-import { useListInvoicesQuery } from "../../features/invoices/invoicesApi";
+import { useListInvoicesQuery, InvoiceStatus } from "../../features/invoices/invoicesApi";
 import { useSelector } from "react-redux";
 import { selectPreferredCurrency } from "../../features/settings/settingsSlice";
 import { CURRENCY_RATES } from "../../constants/currencies";
 import { STATUS_CONFIG } from "./statusConfig";
-
-// FE kopie backend enumu
-export enum InvoiceStatus {
-    Draft = 0,
-    Issued = 1,
-    Sent = 2,
-    Overdue = 3,
-    Paid = 4,
-    Cancelled = 5,
-}
 
 const getCurrencyRate = (code?: string) => {
     if (!code) return 1;
