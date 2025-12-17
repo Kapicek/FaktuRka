@@ -12,15 +12,17 @@
 9. [Databáze](#databáze)
 10. [Integrace a exporty](#integrace-a-exporty)
 11. [Chybové stavy a validace](#chybové-stavy-a-validace)
+12. [Testování](#testování)
 
 ---
 
 ## Přehled
 
-Projekt se skládá ze dvou .NET projektů:
+Projekt se skládá ze dvou .NET projektů a jednoho frontendového balíku:
 
 - **`backend`** – ASP.NET Core Web API (REST), autentizace JWT, služby, kontrolery, PDF export faktur.
 - **`database`** – knihovna s **EF Core modely** (entity + enumy) sdílená s backendem.
+- **`frontend-web`** – React 19 aplikace stavěná přes **Vite**, TypeScript + MUI, data načítá přes RTK Query a komunikuje s REST API z backendu.
 
 Aplikace je multitenantní na úrovni uživatele: téměř všechny dotazy filtrují data podle `UserId` (z JWT tokenu). V praxi to znamená: **uživatel vidí a spravuje pouze svoje zákazníky a faktury**.
 
@@ -39,6 +41,31 @@ Aplikace je multitenantní na úrovni uživatele: téměř všechny dotazy filtr
 ### Database (`database`, .NET 9)
 - **EF Core 9** + **Npgsql**
 - Obsahuje entity + enumy používané i v backendu (`database.Models.*`, `database.Models.Enums.*`)
+
+### Frontend (`frontend-web`, React + Vite)
+- **React 19 + TypeScript** (`vite`, `@vitejs/plugin-react`)
+- **MUI 7** pro UI komponenty, **@mui/x-data-grid / x-date-pickers** pro tabulky a datumy
+- **Redux Toolkit + RTK Query** (`@reduxjs/toolkit`, `react-redux`) pro stav a REST data
+- **react-hook-form + zod** pro validace formulářů
+- Další knihovny: `dayjs` (datumy), `highcharts` (grafy), `cypress` (E2E)
+
+Spuštění FE:
+```bash
+cd frontend-web
+npm install
+npm run dev         # vývoj
+npm run build       # produkční build (tsc -b + vite build)
+npm run lint        # eslint 9
+# E2E testy (Cypress) – otevře runner nebo pustí headless běh
+npm run cypress:open
+npm run cypress:run
+```
+
+---
+
+## Testování
+
+- **Frontend** – end-to-end scénáře přes **Cypress** (viz `frontend-web/cypress/e2e/createCustomer.cy.ts`, `createInvoice.cy.ts`). Testují hlavní happy path: přihlášení, vytvoření zákazníka a faktury. Spuštění: `npm run cypress:open` pro interaktivní runner nebo `npm run cypress:run` pro headless CI.
 
 ---
 
