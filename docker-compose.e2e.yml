@@ -1,0 +1,33 @@
+services:
+  db-e2e:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fakturka_e2e
+    volumes:
+      - pgdata_e2e:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fakturka_e2e"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  api-e2e:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_URLS: "http://+:8080"
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ConnectionStrings__Default: "Host=db-e2e;Port=5432;Database=fakturka_e2e;Username=postgres;Password=postgres"
+    depends_on:
+      db-e2e:
+        condition: service_healthy
+    ports:
+      - "7010:8080"
+
+volumes:
+  pgdata_e2e:

@@ -13,6 +13,14 @@ Informace:
 Swagger běží na portu 7010 -> https://localhost:7010/swagger/index.html
 
 
+### E2E testy
 
-Tady je google auth: https://console.cloud.google.com/auth/overview?project=fakturka-477916 - JE POTŘEBA PAK NASTAVIT "Authorized JavaScript origins" (respektive to udělám já, Dejvid Copperfield, páč to je vedené na můj účet)
+- Reálné E2E (BE + DB v Dockeru): v `frontend-web` spusť `npm run cypress:run`
+  - použije se `docker-compose.e2e.yml` a Cypress poběží s `useRealApi=true`
+  - pokud FE neběží, script ho automaticky spustí na `http://localhost:5173`
+- Jen “mock” běh Cypress bez Dockeru: v `frontend-web` spusť `npm run cypress:run:mock`
 
+- `frontend-web/cypress/e2e/createCustomer.cy.ts`: otevře formulář nového zákazníka, “předstírá” ARES výsledky (search + detail), vybere firmu, doplní email a uloží zákazníka do reálné DB přes backend; ověřuje, že se poslal správný request a že aplikace přesměruje na seznam zákazníků.
+- `frontend-web/cypress/e2e/createInvoice.cy.ts`: nejdřív si přes backend API vytvoří zákazníka (aby šel vybrat v UI), otevře formulář nové faktury, vybere zákazníka, vyplní položku a odešle; ověřuje `customerId` a položky v requestu a přesměrování na seznam faktur.
+
+Pozn.: ARES je v testech záměrně mocknutý, aby testy nebyly závislé na externí službě.

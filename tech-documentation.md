@@ -65,14 +65,27 @@ npm run build       # produkční build (tsc -b + vite build)
 npm run lint        # eslint 9
 # E2E testy (Cypress) – otevře runner nebo pustí headless běh
 npm run cypress:open
-npm run cypress:run
+npm run cypress:run:mock
 ```
 
 ---
 
 ## Testování
 
-- **Frontend** – end-to-end scénáře přes **Cypress** (viz `frontend-web/cypress/e2e/createCustomer.cy.ts`, `createInvoice.cy.ts`). Testují hlavní happy path: přihlášení, vytvoření zákazníka a faktury. Spuštění: `npm run cypress:open` pro interaktivní runner nebo `npm run cypress:run` pro headless CI.
+- **Frontend (E2E)** – end-to-end scénáře přes **Cypress** (viz `frontend-web/cypress/e2e/createCustomer.cy.ts`, `frontend-web/cypress/e2e/createInvoice.cy.ts`).
+
+  **Režim testů:** projekt podporuje “reálné” E2E testy s backendem + DB v Dockeru (bez stubování Customers/Invoices). ARES je v testech záměrně mocknutý, aby testy nebyly závislé na externí službě.
+
+  **Spuštění reálných E2E testů (doporučené):**
+  ```bash
+  # Spustí DB+API v Dockeru, nastartuje FE na :5173, počká na ready a pustí Cypress s useRealApi=true
+  npm -C frontend-web run cypress:run
+  ```
+
+  **Jen “mock” běh Cypress bez Dockeru:**
+  ```bash
+  npm -C frontend-web run cypress:run:mock
+  ```
 
 - **Backend** – testován pomocí samostatného projektu `backend.Tests`. Obsahuje:
   - unit testy controllerů a služeb,

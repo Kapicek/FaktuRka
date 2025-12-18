@@ -1,9 +1,16 @@
 describe("Customer creation flow", () => {
     beforeEach(() => {
-        cy.intercept("GET", "**/api/Customers*", { items: [], totalCount: 0 }).as("listCustomers");
+        const useRealApi = Boolean(Cypress.env("useRealApi"));
+        if (!useRealApi) {
+            cy.intercept("GET", "**/api/Customers*", { items: [], totalCount: 0 }).as("listCustomers");
+        } else {
+            cy.intercept("GET", "**/api/Customers*").as("listCustomers");
+        }
     });
 
     it("allows creating a new customer via the form", () => {
+        const useRealApi = Boolean(Cypress.env("useRealApi"));
+
         cy.intercept("GET", "**/api/Ares/search*", {
             body: [
                 {
@@ -30,10 +37,14 @@ describe("Customer creation flow", () => {
             },
         }).as("aresDetail");
 
-        cy.intercept("POST", "**/api/Customers", {
-            statusCode: 201,
-            body: { id: 99, name: "Test Customer s.r.o." },
-        }).as("createCustomer");
+        if (!useRealApi) {
+            cy.intercept("POST", "**/api/Customers", {
+                statusCode: 201,
+                body: { id: 99, name: "Test Customer s.r.o." },
+            }).as("createCustomer");
+        } else {
+            cy.intercept("POST", "**/api/Customers").as("createCustomer");
+        }
 
         cy.authenticatedVisit("/customers/new");
 

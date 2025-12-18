@@ -8,5 +8,6 @@ module.exports = defineConfig({
     },
     env: {
         apiUrl: "http://localhost:7010/api",
+        useRealApi: false,
     },
 });

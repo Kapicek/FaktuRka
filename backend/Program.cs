@@ -58,7 +58,9 @@ var allowedOrigins = new[]
     "https://localhost:7121",
     "http://localhost:5232",
     "http://localhost:5173",
-    "https://localhost:5173"
+    "https://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://[::1]:5173"
 };
 QuestPDF.Settings.License = LicenseType.Community;
 
