@@ -11,6 +11,7 @@ import { RememberMeCheckbox, SignUpLink, ForgotPasswordLink } from "../utils/sig
 import { createSignInHandler } from "../utils/signIn/createSignInHandler";
 import authImage from "../assets/Auth-Image.png";
 import { RegistrationForm } from "../components/auth/RegistrationForm";
+import { ForgotPasswordForm } from "../components/auth/ForgotPasswordForm";
 
 export default function SignIn() {
     const token = useSelector(selectToken);
@@ -22,6 +23,7 @@ export default function SignIn() {
     const [login] = useLoginMutation();
     const [googleLogin] = useGoogleLoginMutation();
     const isRegistration = location.pathname === "/sign-up";
+    const isForgotPassword = location.pathname === "/forgot-password";
 
     useEffect(() => {
         dispatch(logout());
@@ -48,13 +50,12 @@ export default function SignIn() {
     if (token === undefined) return <LinearProgress />;
     if (token) return null;
 
-
     return (
         <Stack
-            direction={"row"}
+            direction="row"
             sx={{
                 bgcolor: "background.default",
-                height: "100%",
+                minHeight: "100vh",
                 width: "100%",
                 justifyContent: "center",
                 alignItems: "center",
@@ -85,10 +86,12 @@ export default function SignIn() {
                     }}
                 />
             </Stack>
-            <Stack direction={"row"}>
-                {isRegistration ? (
-                    <RegistrationForm title="Registration" />
-                ) : (
+            {isForgotPassword ? (
+                <ForgotPasswordForm onSuccess={() => navigate("/sign-in?reset=success", { replace: true })} />
+            ) : isRegistration ? (
+                <RegistrationForm title="Registration" />
+            ) : (
+                <Stack direction="column">
                     <SignInPage
                         providers={[
                             { id: "google", name: "Google" },
@@ -117,9 +120,6 @@ export default function SignIn() {
                                     py: 1.5,
                                 },
                             },
-                            form: {
-                                sx: { mt: 2 },
-                            },
                         }}
                         sx={{
                             "& .MuiBox-root": {
@@ -134,8 +134,8 @@ export default function SignIn() {
                             },
                         }}
                     />
-                )}
-            </Stack>
+                </Stack>
+            )}
         </Stack>
     );
 }
