@@ -4,55 +4,12 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectToken } from "../features/auth/authSlice";
 import { useLoginMutation, useGoogleLoginMutation } from "../features/auth/authApi";
-import { Alert, Box, Checkbox, FormControlLabel, Link, useTheme } from "@mui/material";
-import { Link as RouterLink } from "react-router-dom";
-import { useEffect } from "react";
+import { Alert, Box, Stack } from "@mui/material";
+import { useEffect, useMemo } from "react";
 import { baseApi } from "../features/api/baseApi";
-
-type Provider = { id: "credentials" | string; name?: string };
-
-declare global {
-    interface Window {
-        google?: any;
-    }
-}
-
-const RememberMeCheckbox = () => {
-    const theme = useTheme();
-    return (
-        <FormControlLabel
-            label="Remember me"
-            control={
-                <Checkbox
-                    name="remember"
-                    value="true"
-                    color="primary"
-                    sx={{ padding: 0.5, '& .MuiSvgIcon-root': { fontSize: 20 } }}
-                />
-            }
-            slotProps={{
-                typography: {
-                    color: 'textSecondary',
-                    fontSize: theme.typography.pxToRem(14),
-                },
-            }}
-        />
-    );
-}
-
-const SignUpLink = () => (
-    <Link component={RouterLink} to="/sign-up" variant="body2">
-        Sign up
-    </Link>
-);
-
-const ForgotPasswordLink = () => {
-    return (
-        <Link component={RouterLink} to="/forgot-password" variant="body2">
-            Forgot password?
-        </Link>
-    );
-}
+import { RememberMeCheckbox, SignUpLink, ForgotPasswordLink } from "../utils/signIn/slots";
+import { createSignInHandler } from "../utils/signIn/createSignInHandler";
+import authImage from "../assets/Auth-Image.png";
 
 export default function SignIn() {
     const token = useSelector(selectToken);
@@ -70,134 +27,108 @@ export default function SignIn() {
         dispatch(baseApi.util.resetApiState());
     }, [dispatch]);
 
+    useEffect(() => {
+        if (token) {
+            navigate(callbackUrl, { replace: true });
+        }
+    }, [token, callbackUrl, navigate]);
+
+    const signIn = useMemo(
+        () =>
+            createSignInHandler({
+                callbackUrl,
+                login,
+                googleLogin,
+                navigate,
+            }),
+        [callbackUrl, login, googleLogin, navigate]
+    );
+
     if (token === undefined) return <LinearProgress />;
-    if (token) {
-        navigate(callbackUrl, { replace: true });
-        return null;
-    }
-
-    const getGoogleIdToken = (): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const google = window.google;
-
-            if (!google?.accounts?.id) {
-                reject(new Error("Google SDK was not loaded"));
-                return;
-            }
-
-            const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-            if (!clientId) {
-                reject(new Error("missing VITE_GOOGLE_CLIENT_ID "));
-                return;
-            }
-
-            // Sign-In
-            google.accounts.id.initialize({
-                client_id: clientId,
-                callback: (response: any) => {
-                    if (response?.credential) {
-                        resolve(response.credential);
-                    } else {
-                        reject(new Error("Google sign-in nevr�til credential"));
-                    }
-                },
-            });
-
-            // Google
-            google.accounts.id.prompt((notification: any) => {
-                const notDisplayedReason = notification.getNotDisplayedReason?.();
-                const skippedReason = notification.getSkippedReason?.();
-
-                if (notDisplayedReason || skippedReason) {
-                    reject(
-                        new Error(
-                            `Google sign-in has been canceled (${notDisplayedReason ?? skippedReason})`
-                        )
-                    );
-                }
-            });
-        });
-    };
+    if (token) return null;
 
 
     return (
-        <Box
+        <Stack
+            direction={"row"}
             sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
+                bgcolor: "background.default",
+                height: "100%",
+                width: "100%",
                 justifyContent: "center",
-                height: "100vh",
-                width: "100vw",
-                bgcolor: "background.paper",
-                padding: 2,
+                alignItems: "center",
             }}
         >
-            {resetSuccess && (
-                <Alert
-                    severity="success"
-                    sx={{ width: "100%", maxWidth: 420, mb: 2 }}
-                >
-                    We sent a new password to your email. Please sign in with the new credentials.
-                </Alert>
-            )}
-            <SignInPage
-                providers={[
-                    { id: "credentials", name: "Email & password" },
-                    { id: "google", name: "Google" },
-                ]}
-                slots={{
-                    signUpLink: SignUpLink,
-                    rememberMe: RememberMeCheckbox,
-                    forgotPasswordLink: ForgotPasswordLink,
+            <Stack
+                direction={"row"}
+                sx={{
+                    display: { xs: "none", md: "flex" },
+                    alignItems: "center",
+                    justifyContent: "center",
+                    pr: 6,
+                    width: 600,
+                    height: 700,
+                    overflow: "hidden",
+                    borderRadius: 3,
                 }}
-                signIn={async (provider: Provider, formData?: FormData, cbUrl?: string) => {
-                    const targetUrl = cbUrl || callbackUrl || "/";
-
-                    // === GOOGLE PROVIDER ===
-                    if (provider.id === "google") {
-                        try {
-                            const idToken = await getGoogleIdToken();
-                            await googleLogin({ idToken }).unwrap();
-                            navigate(targetUrl, { replace: true });
-                            return {};
-                        } catch (e: unknown) {
-                            const anyErr = e as { data?: any; message?: string };
-                            const msg =
-                                anyErr?.data?.message ??
-                                anyErr?.data?.error ??
-                                anyErr?.message ??
-                                "Google login failed";
-                            return { error: String(msg) };
+            >
+                <Box
+                    component="img"
+                    src={authImage}
+                    alt="Auth"
+                    sx={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                        objectPosition: "center",
+                    }}
+                />
+            </Stack>
+            <Stack direction={"row"}>
+                <SignInPage
+                    providers={[
+                        { id: "google", name: "Google" },
+                        { id: "credentials", name: "Email & password" },
+                    ]}
+                    slots={{
+                        signUpLink: SignUpLink,
+                        rememberMe: RememberMeCheckbox,
+                        forgotPasswordLink: ForgotPasswordLink,
+                    }}
+                    signIn={signIn}
+                    slotProps={{
+                        submitButton: {
+                            sx: {
+                                textTransform: "none",
+                                mt: 2,
+                                py: 1.5,
+                            },
+                        },
+                        oAuthButton: {
+                            sx: {
+                                textTransform: "none",
+                                mt: 2,
+                                py: 1.5,
+                            }
+                        },
+                        form: {
+                            sx: { mt: 2 }
                         }
-                    }
-
-                    // === CREDENTIALS PROVIDER ===
-                    if (provider.id !== "credentials") {
-                        return { error: "Unsupported provider" };
-                    }
-
-                    const email = (formData?.get("email") as string) ?? "";
-                    const password = (formData?.get("password") as string) ?? "";
-                    const rememberMe = (formData?.get("remember") as string) === "true";
-
-                    if (!email || !password) return { error: "Email and password are required" };
-
-                    try {
-                        await login({ email, password, rememberMe }).unwrap();
-                        navigate(targetUrl, { replace: true });
-                        return {};
-                    } catch (e: unknown) {
-                        const anyErr = e as { data?: any; message?: string };
-                        const msg =
-                            anyErr?.data?.message ??
-                            anyErr?.data?.error ??
-                            anyErr?.message ??
-                            "Login failed";
-                        return { error: String(msg) };
-                    }
-                }}
-            />
-        </Box>
+                    }}
+                    sx={{
+                        '& .MuiBox-root': {
+                            width: 360,
+                        },
+                        '& .MuiStack-root': {
+                            boxShadow: "none",
+                            border: "none",
+                        },
+                        "& .MuiInputBase-input": {
+                            py: 1.5,
+                        },
+                    }}
+                />
+            </Stack>
+        </Stack>
     );
 }

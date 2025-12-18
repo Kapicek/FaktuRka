@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { ReactRouterAppProvider } from "@toolpad/core/react-router";
 import type { Navigation } from "@toolpad/core/AppProvider";
 import { selectUser } from "./features/auth/authSlice";
-import SessionProvider from "./SessionContext";
+import SessionProvider from "./SessionProvider";
 import { DescriptionRounded, PeopleRounded } from "@mui/icons-material";
 
 const NAVIGATION: Navigation = [
