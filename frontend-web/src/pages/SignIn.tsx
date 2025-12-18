@@ -1,26 +1,27 @@
 import LinearProgress from "@mui/material/LinearProgress";
 import { SignInPage } from "@toolpad/core/SignInPage";
-import { useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate, useLocation } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { logout, selectToken } from "../features/auth/authSlice";
 import { useLoginMutation, useGoogleLoginMutation } from "../features/auth/authApi";
-import { Alert, Box, Stack } from "@mui/material";
+import { Box, Stack } from "@mui/material";
 import { useEffect, useMemo } from "react";
 import { baseApi } from "../features/api/baseApi";
 import { RememberMeCheckbox, SignUpLink, ForgotPasswordLink } from "../utils/signIn/slots";
 import { createSignInHandler } from "../utils/signIn/createSignInHandler";
 import authImage from "../assets/Auth-Image.png";
+import { RegistrationForm } from "../components/auth/RegistrationForm";
 
 export default function SignIn() {
     const token = useSelector(selectToken);
     const dispatch = useDispatch();
     const [params] = useSearchParams();
+    const location = useLocation();
     const navigate = useNavigate();
     const callbackUrl = params.get("callbackUrl") || "/";
-    const resetStatus = params.get("reset");
-    const resetSuccess = resetStatus === "success";
     const [login] = useLoginMutation();
     const [googleLogin] = useGoogleLoginMutation();
+    const isRegistration = location.pathname === "/sign-up";
 
     useEffect(() => {
         dispatch(logout());
@@ -85,49 +86,55 @@ export default function SignIn() {
                 />
             </Stack>
             <Stack direction={"row"}>
-                <SignInPage
-                    providers={[
-                        { id: "google", name: "Google" },
-                        { id: "credentials", name: "Email & password" },
-                    ]}
-                    slots={{
-                        signUpLink: SignUpLink,
-                        rememberMe: RememberMeCheckbox,
-                        forgotPasswordLink: ForgotPasswordLink,
-                    }}
-                    signIn={signIn}
-                    slotProps={{
-                        submitButton: {
-                            sx: {
-                                textTransform: "none",
-                                mt: 2,
-                                py: 1.5,
+                {isRegistration ? (
+                    <RegistrationForm title="Registration" />
+                ) : (
+                    <SignInPage
+                        providers={[
+                            { id: "google", name: "Google" },
+                            { id: "credentials", name: "Email & password" },
+                        ]}
+                        slots={{
+                            signUpLink: SignUpLink,
+                            rememberMe: RememberMeCheckbox,
+                            forgotPasswordLink: ForgotPasswordLink,
+                        }}
+                        signIn={signIn}
+                        slotProps={{
+                            submitButton: {
+                                sx: {
+                                    textTransform: "none",
+                                    mt: 2,
+                                    py: 1.5,
+                                    backgroundColor: "primary.main",
+                                    color: (theme) => theme.palette.primary.contrastText,
+                                },
                             },
-                        },
-                        oAuthButton: {
-                            sx: {
-                                textTransform: "none",
-                                mt: 2,
-                                py: 1.5,
-                            }
-                        },
-                        form: {
-                            sx: { mt: 2 }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiBox-root': {
-                            width: 360,
-                        },
-                        '& .MuiStack-root': {
-                            boxShadow: "none",
-                            border: "none",
-                        },
-                        "& .MuiInputBase-input": {
-                            py: 1.5,
-                        },
-                    }}
-                />
+                            oAuthButton: {
+                                sx: {
+                                    textTransform: "none",
+                                    mt: 2,
+                                    py: 1.5,
+                                },
+                            },
+                            form: {
+                                sx: { mt: 2 },
+                            },
+                        }}
+                        sx={{
+                            "& .MuiBox-root": {
+                                width: 360,
+                            },
+                            "& .MuiStack-root": {
+                                boxShadow: "none",
+                                border: "none",
+                            },
+                            "& .MuiInputBase-input": {
+                                py: 2,
+                            },
+                        }}
+                    />
+                )}
             </Stack>
         </Stack>
     );
