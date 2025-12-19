@@ -101,7 +101,11 @@ builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
-builder.Services.AddHttpClient<IAresService, AresService>();
+builder.Services.AddHttpClient<IAresService, AresService>((sp, client) =>
+{
+    var config = sp.GetRequiredService<IConfiguration>();
+    client.BaseAddress = new Uri(config["Ares:BaseUrl"]!);
+});
 
 builder.Services.AddCors(options =>
 {

@@ -14,8 +14,6 @@ namespace backend.Services
 {
     public class AresService : IAresService
     {
-        private const string BaseUrl = "https://ares.gov.cz/ekonomicke-subjekty-v-be/rest/ekonomicke-subjekty";
-
         private readonly HttpClient _httpClient;
         private readonly JsonSerializerOptions _jsonOptions;
 
@@ -34,7 +32,7 @@ namespace backend.Services
 
         public async Task<AresSubjectDto?> GetByIcoAsync(string ico, CancellationToken cancellationToken = default)
         {
-            var response = await _httpClient.GetAsync($"{BaseUrl}/{ico}", cancellationToken);
+            var response = await _httpClient.GetAsync(ico, cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.NotFound)
                 return null;
@@ -49,9 +47,7 @@ namespace backend.Services
 
             await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-            var subject = await JsonSerializer.DeserializeAsync<AresSubjectDto>(stream, _jsonOptions, cancellationToken);
-
-            return subject;
+            return await JsonSerializer.DeserializeAsync<AresSubjectDto>(stream, _jsonOptions, cancellationToken);
         }
 
         public async Task<IReadOnlyList<AresSearchItemDto>> SearchByNameAsync(string name, int limit = DefaultLimit, CancellationToken cancellationToken = default)
@@ -69,7 +65,7 @@ namespace backend.Services
             var json = JsonSerializer.Serialize(requestObject, _jsonOptions);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{BaseUrl}/vyhledat", content, cancellationToken);
+            var response = await _httpClient.PostAsync("vyhledat", content, cancellationToken);
 
             if (response.StatusCode == HttpStatusCode.BadRequest)
             {

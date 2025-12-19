@@ -31,7 +31,11 @@ namespace backend.Tests.Unit.Services
                 .Callback<HttpRequestMessage, CancellationToken>((req, ct) => onRequest?.Invoke(req))
                 .ReturnsAsync(response);
 
-            var client = new HttpClient(handlerMock.Object);
+            var client = new HttpClient(handlerMock.Object)
+            {
+                BaseAddress = new Uri("https://ares.test/")
+            };
+
             return new AresService(client);
         }
 
