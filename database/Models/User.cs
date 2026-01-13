@@ -30,6 +30,8 @@ public class User
     public string? PasswordHash { get; set; }
     public string? PasswordSalt { get; set; }
 
+    public int TokenVersion { get; set; } = 0;
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? DeletedAt { get; set; }

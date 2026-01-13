@@ -107,8 +107,10 @@ public class AuthService : IAuthService
             new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
             new(JwtRegisteredClaimNames.Email, user.Email),
             new("name", $"{user.FirstName} {user.LastName}".Trim()),
-            new("provider", user.AuthProvider)
-            // tady pak dodělám claimy more
+            new("provider", user.AuthProvider),
+
+            // revokace tokenu podle verze:
+            new("tv", user.TokenVersion.ToString())
         };
 
         var token = new JwtSecurityToken(
@@ -275,12 +277,13 @@ Fakturka"
             .ToList();
 
         var claims = new List<Claim>
-        {
-            new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
-            new(JwtRegisteredClaimNames.Email, user.Email),
-            new("name", $"{user.FirstName} {user.LastName}".Trim()),
-            new("provider", user.AuthProvider)
-        };
+            {
+                new(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
+                new(JwtRegisteredClaimNames.Email, user.Email),
+                new("name", $"{user.FirstName} {user.LastName}".Trim()),
+                new("provider", user.AuthProvider),
+                new("tv", user.TokenVersion.ToString())
+            };
 
         claims.AddRange(roleNames.Select(r => new Claim(ClaimTypes.Role, r)));
 

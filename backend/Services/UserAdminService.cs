@@ -54,6 +54,7 @@
                 });
             }
 
+            user.TokenVersion++;
             user.UpdatedAt = DateTimeOffset.UtcNow;
             await _db.SaveChangesAsync();
 

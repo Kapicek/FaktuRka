@@ -10,6 +10,7 @@ using QuestPDF.Infrastructure;
 using System.Net;
 using System.Security.Claims;
 using System.Text;
+using System.IdentityModel.Tokens.Jwt;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -71,21 +72,73 @@ builder.Services
         options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
         options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
     })
-    .AddJwtBearer(options =>
+.AddJwtBearer(options =>
+{
+    options.SaveToken = true;
+
+    options.TokenValidationParameters = new TokenValidationParameters
     {
-        options.SaveToken = true;
-        options.TokenValidationParameters = new TokenValidationParameters
+        ValidIssuer = jwtSection["Issuer"],
+        ValidAudience = jwtSection["Audience"],
+        IssuerSigningKey = signingKey,
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        RoleClaimType = ClaimTypes.Role,
+    };
+
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
         {
-            ValidIssuer = jwtSection["Issuer"],
-            ValidAudience = jwtSection["Audience"],
-            IssuerSigningKey = signingKey,
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            RoleClaimType = ClaimTypes.Role
-        };
-    });
+            var principal = context.Principal;
+            if (principal is null)
+            {
+                context.Fail("No principal.");
+                return;
+            }
+
+            var userIdStr =
+                principal.FindFirstValue(JwtRegisteredClaimNames.Sub) ??
+                principal.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            var tvStr = principal.FindFirstValue("tv");
+
+            if (string.IsNullOrWhiteSpace(userIdStr) || string.IsNullOrWhiteSpace(tvStr))
+            {
+                context.Fail("Missing required claims.");
+                return;
+            }
+
+            if (!int.TryParse(userIdStr, out var userId) || !int.TryParse(tvStr, out var tokenVersion))
+            {
+                context.Fail("Invalid claims.");
+                return;
+            }
+
+            var db = context.HttpContext.RequestServices.GetRequiredService<AppDbContext>();
+
+            var currentVersion = await db.Users
+                .Where(u => u.Id == userId)
+                .Select(u => u.TokenVersion)
+                .SingleOrDefaultAsync();
+
+            var exists = await db.Users.AnyAsync(u => u.Id == userId);
+            if (!exists)
+            {
+                context.Fail("User not found.");
+                return;
+            }
+
+            if (currentVersion != tokenVersion)
+            {
+                context.Fail("Token revoked.");
+                return;
+            }
+        }
+    };
+});
 
 builder.Services.AddAuthorization();
 
