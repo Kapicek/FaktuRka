@@ -14,6 +14,8 @@ Tento dokument slouží jako kompletní průvodce pro běžného uživatele apli
 
 > Tip: Po úspěšném resetu se na přihlašovací stránce zobrazí potvrzení, že bylo nové heslo odesláno.
 
+![Login](images/login.png)
+
 ---
 
 ## 2. Navigace v aplikaci
@@ -58,6 +60,8 @@ Nad datagridem najdete toolbar s následujícími filtry:
 
 Každá změna filtru automaticky obnoví data a přepne stránkování na první stránku.
 
+![Dashboard](images/dashboard.png)
+
 ---
 
 ## 4. Detail faktury
@@ -76,6 +80,8 @@ Po kliknutí na řádek v seznamu se zobrazí **Invoices Detail**:
 
 Statusové změny jsou potvrzovány alerty a je možné je znovu načíst (automaticky se volá `refetch()`).
 
+![Invoice](images/invoice-detail.png)
+
 ---
 
 ## 5. Vystavení a editace faktury
@@ -90,6 +96,9 @@ Stránka **InvoicesForm** slouží jak pro novou fakturu, tak pro editaci nebo d
 - uložením se odešle POST (nová faktura) nebo PUT (editace) na `/api/invoices`.
 
 > Poznámka: Úpravy existující faktury jsou možné pouze v stavu **Draft**. Změna stavu u již vystavených faktur se řeší přímo v detailu přes status combobox.
+
+![Invoice form 1](images/invoice-form-1.png)
+![Invoice form 2](images/invoice-form-2.png)
 
 ---
 
@@ -119,6 +128,8 @@ Sekce **Customers** obsahuje:
   - lze vybrat položku z autocomplete,
   - tlačítkem vedle pole načtete detail z ARESu a předvyplní se název, adresa, identifikátory.
 - Uložení (create i update) probíhá přes `/api/customers`.
+
+![Customer form](images/customer-editor.png)
 
 ---
 
