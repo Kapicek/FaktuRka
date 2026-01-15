@@ -388,7 +388,7 @@ const InvoicesForm: React.FC = () => {
                         </Grid>
                     </LocalizationProvider>
                 </FormCard>
-                <FormCard title="Invoice items *" contentProps={{ sx: { pb: 0 } }}>
+                <FormCard contentProps={{ sx: { pb: 0 } }}>
                     <Stack direction="row" justifyContent={"space-between"} sx={{ mb: 2 }}>
                         <Typography variant="subtitle1" fontWeight={800}>
                             Invoice items *
