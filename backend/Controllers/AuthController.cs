@@ -33,7 +33,7 @@ public class AuthController : ControllerBase
 
     [HttpPost("register")]
     [Consumes("application/json")]
-    [ProducesResponseType(typeof(AuthResultDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(RegisterResultDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Register([FromBody] RegisterRequestDto request)
     {
         try
@@ -83,4 +83,32 @@ public class AuthController : ControllerBase
             message = "If the account exists, a new password has been sent to the email address."
         });
     }
+
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDto request)
+    {
+        try
+        {
+            var result = await _authService.VerifyEmailAsync(request.Email, request.Code);
+            return Ok(result);
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            return Unauthorized(ex.Message);
+        }
+    }
+
+    [HttpPost("resend-verification")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequestDto request)
+    {
+        await _authService.ResendVerificationAsync(request.Email);
+        return Ok(new { message = "If the account exists, a verification code has been sent." });
+    }
+
 }

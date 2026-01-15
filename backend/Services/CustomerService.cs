@@ -1,10 +1,12 @@
 ﻿using backend.Models.Common;
 using backend.Models.Customers;
+using backend.Querying;
 using backend.Repositories;
 using backend.Services.Abstraction;
 using database;
 using database.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace backend.Services;
 
@@ -17,99 +19,47 @@ public class CustomerService : ICustomerService
         _repo = repo;
     }
 
-public async Task<PagedResult<CustomerListItemDto>> GetCustomersAsync(
-    int userId,
-    CustomerListQuery q)
-{
-    var query = _repo.Query(userId);
-
-    // TEXT FILTERS
-    if (!string.IsNullOrWhiteSpace(q.Name))
-        query = query.Where(c =>
-            c.Name.ToLower().Contains(q.Name.ToLower()));
-
-    if (!string.IsNullOrWhiteSpace(q.Ico))
-        query = query.Where(c =>
-            c.Ico != null && c.Ico.Contains(q.Ico));
-
-    if (!string.IsNullOrWhiteSpace(q.Dic))
-        query = query.Where(c =>
-            c.Dic != null && c.Dic.Contains(q.Dic));
-
-    if (!string.IsNullOrWhiteSpace(q.Email))
-        query = query.Where(c =>
-            c.Email != null && c.Email.ToLower().Contains(q.Email.ToLower()));
-
-    if (!string.IsNullOrWhiteSpace(q.Phone))
-        query = query.Where(c =>
-            c.Phone != null && c.Phone.Contains(q.Phone));
-
-    if (!string.IsNullOrWhiteSpace(q.City))
-        query = query.Where(c =>
-            c.Address != null &&
-            c.Address.City != null &&
-            c.Address.City.ToLower().Contains(q.City.ToLower()));
-
-    if (!string.IsNullOrWhiteSpace(q.CountryCode))
-        query = query.Where(c =>
-            c.Address != null &&
-            c.Address.CountryCode == q.CountryCode);
-
-    // TOTAL COUNT
-    var total = await query.CountAsync();
-
-    // SORT
-    query = q.SortBy switch
-    {
-        "name" => q.Desc
-            ? query.OrderByDescending(c => c.Name)
-            : query.OrderBy(c => c.Name),
-
-        "ico" => q.Desc
-            ? query.OrderByDescending(c => c.Ico)
-            : query.OrderBy(c => c.Ico),
-
-        "email" => q.Desc
-            ? query.OrderByDescending(c => c.Email)
-            : query.OrderBy(c => c.Email),
-
-        "city" => q.Desc
-            ? query.OrderByDescending(c => c.Address!.City)
-            : query.OrderBy(c => c.Address!.City),
-
-        "createdAt" => q.Desc
-            ? query.OrderByDescending(c => c.CreatedAt)
-            : query.OrderBy(c => c.CreatedAt),
-
-        _ => query.OrderBy(c => c.Name)
-    };
-
-    // PAGING
-    query = query
-        .Skip((q.Page - 1) * q.PageSize)
-        .Take(q.PageSize);
-
-    // PROJECTION
-    var items = await query
-        .Select(c => new CustomerListItemDto
+    private static readonly IReadOnlyDictionary<string, LambdaExpression> CustomerSortMap =
+        new Dictionary<string, LambdaExpression>(StringComparer.OrdinalIgnoreCase)
         {
-            Id = c.Id,
-            Name = c.Name,
-            Ico = c.Ico,
-            Email = c.Email,
-            City = c.Address != null ? c.Address.City : null
-        })
-        .ToListAsync();
+            ["name"] = (Expression<Func<Customer, string>>)(c => c.Name),
+            ["ico"] = (Expression<Func<Customer, string?>>)(c => c.Ico),
+            ["email"] = (Expression<Func<Customer, string?>>)(c => c.Email),
+            ["city"] = (Expression<Func<Customer, string?>>)(c => c.Address!.City),
+            ["createdAt"] = (Expression<Func<Customer, DateTimeOffset>>)(c => c.CreatedAt),
+        };
 
-    return new PagedResult<CustomerListItemDto>
+    public async Task<PagedResult<CustomerListItemDto>> GetCustomersAsync(int userId, CustomerListQuery q)
     {
-        Items = items,
-        TotalCount = total
-    };
-}
+        var query = _repo.Query(userId);
+
+        query = query
+            .WhereLikeIf(q.Name, c => c.Name)
+            .WhereContainsIf(q.Ico, c => c.Ico)
+            .WhereContainsIf(q.Dic, c => c.Dic)
+            .WhereLikeIf(q.Email, c => c.Email)
+            .WhereContainsIf(q.Phone, c => c.Phone)
+            .WhereLikeIf(q.City, c => c.Address != null ? c.Address.City : null)
+            .WhereIf(!string.IsNullOrWhiteSpace(q.CountryCode),
+                c => c.Address != null && c.Address.CountryCode == q.CountryCode!.Trim());
+
+        return await QueryPipeline.ExecuteAsync(
+            query,
+            q,
+            CustomerSortMap,
+            defaultSortKey: "name",
+            selector: c => new CustomerListItemDto
+            {
+                Id = c.Id,
+                Name = c.Name,
+                Ico = c.Ico,
+                Email = c.Email,
+                City = c.Address != null ? c.Address.City : null
+            });
+    }
 
 
-public async Task<CustomerDto?> GetCustomerAsync(int userId, int id)
+    public async Task<CustomerDto?> GetCustomerAsync(int userId, int id)
     {
         var c = await _repo.GetByIdAsync(userId, id);
         if (c == null) return null;

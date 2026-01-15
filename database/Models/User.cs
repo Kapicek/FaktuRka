@@ -31,11 +31,11 @@ public class User
     public string? PasswordSalt { get; set; }
 
     public int TokenVersion { get; set; } = 0;
+    public bool EmailVerified { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? DeletedAt { get; set; }
-
     public ICollection<Customer> Customers { get; set; } = new List<Customer>();
     public ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
     public ICollection<InvoiceSequence> InvoiceSequences { get; set; } = new List<InvoiceSequence>();

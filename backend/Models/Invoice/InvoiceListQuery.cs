@@ -1,8 +1,9 @@
-﻿using database.Models.Enums;
+﻿using backend.Models.Common;
+using database.Models.Enums;
 
 namespace backend.Models.Invoice
 {
-    public class InvoiceListQuery
+    public class InvoiceListQuery : IPagedListQuery
     {
         public int? CustomerId { get; set; }
         public InvoiceStatus? Status { get; set; }

@@ -153,6 +153,7 @@ builder.Services.AddScoped<IInvoiceSequenceRepository, InvoiceSequenceRepository
 builder.Services.AddScoped<IInvoiceService, InvoiceService>();
 builder.Services.AddScoped<IUserAdminService, UserAdminService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<IEmailVerificationRepository, EmailVerificationRepository>();
 
 builder.Services.AddHttpClient<IAresService, AresService>((sp, client) =>
 {

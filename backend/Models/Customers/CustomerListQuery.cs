@@ -1,6 +1,8 @@
-﻿namespace backend.Models.Customers;
+﻿using backend.Models.Common;
 
-public class CustomerListQuery
+namespace backend.Models.Customers;
+
+public class CustomerListQuery : IPagedListQuery
 {
     public string? Name { get; set; }
     public string? Ico { get; set; }

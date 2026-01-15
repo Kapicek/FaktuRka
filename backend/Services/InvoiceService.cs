@@ -2,6 +2,7 @@
 using backend.Models.Invoice;
 using backend.Models.Invoices;
 using backend.PDF;
+using backend.Querying;
 using backend.Repositories;
 using backend.Services.Abstraction;
 using database;
@@ -9,10 +10,9 @@ using database.Models;
 using database.Models.Enums;
 using Microsoft.EntityFrameworkCore;
 using QuestPDF.Fluent;
+using System.Linq.Expressions;
 
 namespace backend.Services;
-
-// vygenerovaný od bota zatim, pak projdu a předělám
 
 public class InvoiceService : IInvoiceService
 {
@@ -33,100 +33,41 @@ public class InvoiceService : IInvoiceService
         _userRepo = userRepo;
     }
 
-    public async Task<PagedResult<InvoiceListItemDto>> GetInvoicesAsync(
-        int userId,
-        InvoiceListQuery q)
+    private static readonly IReadOnlyDictionary<string, LambdaExpression> InvoiceSortMap =
+        new Dictionary<string, LambdaExpression>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["numberFull"] = (Expression<Func<Invoice, string>>)(i => i.NumberFull),
+            ["status"] = (Expression<Func<Invoice, InvoiceStatus>>)(i => i.Status),
+            ["issueDate"] = (Expression<Func<Invoice, DateOnly>>)(i => i.IssueDate),
+            ["dueDate"] = (Expression<Func<Invoice, DateOnly>>)(i => i.DueDate),
+            ["customerName"] = (Expression<Func<Invoice, string>>)(i => i.BillingName),
+            ["total"] = (Expression<Func<Invoice, decimal>>)(i => i.Total),
+            ["currency"] = (Expression<Func<Invoice, string>>)(i => i.Currency),
+        };
+
+    public async Task<PagedResult<InvoiceListItemDto>> GetInvoicesAsync(int userId, InvoiceListQuery q)
     {
         var query = _invoiceRepo.Query(userId);
 
-        // CUSTOMER
-        if (q.CustomerId.HasValue)
-            query = query.Where(i => i.CustomerId == q.CustomerId.Value);
-
-        // TEXT
-        if (!string.IsNullOrWhiteSpace(q.Number))
-            query = query.Where(i =>
-                i.NumberFull.ToLower().Contains(q.Number.ToLower()));
-
-        if (!string.IsNullOrWhiteSpace(q.CustomerName))
-            query = query.Where(i =>
-                i.BillingName.ToLower().Contains(q.CustomerName.ToLower()));
-
-        if (!string.IsNullOrWhiteSpace(q.Currency))
-            query = query.Where(i =>
-                i.Currency == q.Currency);
-
-        // ISSUE DATE
-        if (q.IssueDateFrom.HasValue)
-            query = query.Where(i => i.IssueDate >= q.IssueDateFrom.Value);
-
-        if (q.IssueDateTo.HasValue)
-            query = query.Where(i => i.IssueDate <= q.IssueDateTo.Value);
-
-        // DUE DATE
-        if (q.DueDateFrom.HasValue)
-            query = query.Where(i => i.DueDate >= q.DueDateFrom.Value);
-
-        if (q.DueDateTo.HasValue)
-            query = query.Where(i => i.DueDate <= q.DueDateTo.Value);
-
-        // TOTAL RANGE
-        if (q.TotalMin.HasValue)
-            query = query.Where(i => i.Total >= q.TotalMin.Value);
-
-        if (q.TotalMax.HasValue)
-            query = query.Where(i => i.Total <= q.TotalMax.Value);
-
-        // STATUS
-        if (q.Status.HasValue)
-            query = query.Where(i => i.Status == q.Status);
-
-
-        // TOTAL COUNT 
-        var total = await query.CountAsync();
-
-        //️ SORT
-        query = q.SortBy switch
-        {
-            "numberFull" => q.Desc
-                ? query.OrderByDescending(i => i.NumberFull)
-                : query.OrderBy(i => i.NumberFull),
-
-            "status" => q.Desc
-                ? query.OrderByDescending(i => i.Status)
-                : query.OrderBy(i => i.Status),
-
-            "issueDate" => q.Desc
-                ? query.OrderByDescending(i => i.IssueDate)
-                : query.OrderBy(i => i.IssueDate),
-
-            "dueDate" => q.Desc
-                ? query.OrderByDescending(i => i.DueDate)
-                : query.OrderBy(i => i.DueDate),
-
-            "customerName" => q.Desc
-                ? query.OrderByDescending(i => i.BillingName)
-                : query.OrderBy(i => i.BillingName),
-
-            "total" => q.Desc
-                ? query.OrderByDescending(i => i.Total)
-                : query.OrderBy(i => i.Total),
-
-            "currency" => q.Desc
-                ? query.OrderByDescending(i => i.Currency)
-                : query.OrderBy(i => i.Currency),
-
-            _ => query.OrderByDescending(i => i.IssueDate)
-        };
-
-        // PAGING
         query = query
-            .Skip((q.Page - 1) * q.PageSize)
-            .Take(q.PageSize);
+            .WhereIf(q.CustomerId.HasValue, i => i.CustomerId == q.CustomerId!.Value)
+            .WhereLikeIf(q.Number, i => i.NumberFull)
+            .WhereLikeIf(q.CustomerName, i => i.BillingName)
+            .WhereIf(!string.IsNullOrWhiteSpace(q.Currency), i => i.Currency == q.Currency!.Trim())
+            .WhereIf(q.IssueDateFrom.HasValue, i => i.IssueDate >= q.IssueDateFrom!.Value)
+            .WhereIf(q.IssueDateTo.HasValue, i => i.IssueDate <= q.IssueDateTo!.Value)
+            .WhereIf(q.DueDateFrom.HasValue, i => i.DueDate >= q.DueDateFrom!.Value)
+            .WhereIf(q.DueDateTo.HasValue, i => i.DueDate <= q.DueDateTo!.Value)
+            .WhereIf(q.TotalMin.HasValue, i => i.Total >= q.TotalMin!.Value)
+            .WhereIf(q.TotalMax.HasValue, i => i.Total <= q.TotalMax!.Value)
+            .WhereIf(q.Status.HasValue, i => i.Status == q.Status!.Value);
 
-        // PROJECTION
-        var items = await query
-            .Select(i => new InvoiceListItemDto
+        return await QueryPipeline.ExecuteAsync(
+            query,
+            q,
+            InvoiceSortMap,
+            defaultSortKey: "issueDate",
+            selector: i => new InvoiceListItemDto
             {
                 Id = i.Id,
                 NumberFull = i.NumberFull,
@@ -136,14 +77,7 @@ public class InvoiceService : IInvoiceService
                 CustomerName = i.BillingName,
                 Total = i.Total,
                 Currency = i.Currency
-            })
-            .ToListAsync();
-
-        return new PagedResult<InvoiceListItemDto>
-        {
-            Items = items,
-            TotalCount = total
-        };
+            });
     }
 
     public async Task<InvoiceDetailDto?> GetInvoiceAsync(int userId, int id)

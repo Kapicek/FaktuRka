@@ -1,4 +1,5 @@
 ﻿using backend.DTOs.Auth;
+using backend.Repositories;
 using backend.Services.Abstraction;
 using database;
 using database.Models;
@@ -17,6 +18,8 @@ public class AuthService : IAuthService
     private readonly IUserRepository _userRepository;
     private readonly IConfiguration _configuration;
     private readonly IEmailService _emailService;
+    private readonly IEmailVerificationRepository _emailVerificationRepo;
+
 
     // Parametry pro hashování hesel
     // Password hash je PBKDF2 (Rfc2898DeriveBytes) s HMAC-SHA256,
@@ -26,12 +29,18 @@ public class AuthService : IAuthService
     private const int PasswordKeySize = 32;         // 32 bytes = 256 bit
     private const int PasswordIterations = 100_000;
 
-    public AuthService(IUserRepository userRepository, IConfiguration configuration, IEmailService emailService)
+    public AuthService(
+        IUserRepository userRepository,
+        IConfiguration configuration,
+        IEmailService emailService,
+        IEmailVerificationRepository emailVerificationRepo)
     {
         _userRepository = userRepository;
         _configuration = configuration;
         _emailService = emailService;
+        _emailVerificationRepo = emailVerificationRepo;
     }
+
 
     // tohle si tu psal Petr - idk proč to je tu a proč to je virtual
     protected virtual Task<GoogleJsonWebSignature.Payload> ValidateGoogleTokenAsync(string idToken, string googleClientId)
@@ -73,6 +82,7 @@ public class AuthService : IAuthService
                     LastName = lastName,
                     GoogleId = googleId,
                     AuthProvider = "Google",
+                    EmailVerified = true,
                     AvatarUrl = picture
                 };
 
@@ -83,6 +93,7 @@ public class AuthService : IAuthService
                 user.GoogleId = googleId;
                 user.AuthProvider = "Google";
                 user.AvatarUrl = picture;
+                user.EmailVerified = true;
                 await _userRepository.SaveChangesAsync();
             }
         }
@@ -125,11 +136,10 @@ public class AuthService : IAuthService
         return GenerateAuthResult(user);
     }
 
-    public async Task<AuthResultDto> RegisterAsync(RegisterRequestDto request)
+    public async Task<RegisterResultDto> RegisterAsync(RegisterRequestDto request)
     {
         var email = request.Email.Trim().ToLowerInvariant();
 
-        // základní validace – můžeš zpřísnit (min délka hesla, regexp na email atd.)
         if (string.IsNullOrWhiteSpace(email))
             throw new ArgumentException("Email is required.");
         if (string.IsNullOrWhiteSpace(request.Password))
@@ -139,26 +149,52 @@ public class AuthService : IAuthService
 
         var existingUser = await _userRepository.GetByEmailAsync(email);
 
+        // 1) User už existuje
         if (existingUser != null)
         {
-            // Lokál existuje
+            // 1a) Už má lokální heslo => klasický conflict
             if (!string.IsNullOrEmpty(existingUser.PasswordHash))
                 throw new InvalidOperationException("User with this email already exists.");
 
-            // Uživatel existuje jen přes Google -> přidáme mu lokální heslo
+            // 1b) Existuje jen přes Google => přidáme lokální heslo
             var (hash, salt) = HashPassword(request.Password);
             existingUser.PasswordHash = hash;
             existingUser.PasswordSalt = salt;
 
-            // Todo jak jsem psal u usera, tady je potřeba to předělat potom na enum -> teď jsem na to byl moc línej
-            existingUser.AuthProvider = "Google,Local";
+            existingUser.AuthProvider = string.IsNullOrWhiteSpace(existingUser.AuthProvider)
+                ? "Local"
+                : existingUser.AuthProvider.Contains("Local")
+                    ? existingUser.AuthProvider
+                    : existingUser.AuthProvider + ",Local";
 
+            existingUser.UpdatedAt = DateTimeOffset.UtcNow;
+
+            // Pokud nebyl email ověřený, vynutíme ověření (doporučuji)
+            if (!existingUser.EmailVerified)
+            {
+                await _userRepository.SaveChangesAsync();
+                var expiresAt = await CreateAndSendEmailVerificationAsync(existingUser);
+
+                return new RegisterResultDto
+                {
+                    Message = "Verification code has been sent to your email.",
+                    Email = existingUser.Email,
+                    CodeExpiresAt = expiresAt
+                };
+            }
+
+            // Pokud už je ověřený, můžeš rovnou přihlásit (volitelné)
             await _userRepository.SaveChangesAsync();
 
-            return GenerateAuthResult(existingUser);
+            return new RegisterResultDto
+            {
+                Message = "Local password has been set. You can log in now.",
+                Email = existingUser.Email,
+                CodeExpiresAt = DateTimeOffset.UtcNow // nebo nepoužívat v UI
+            };
         }
 
-        // Nový user
+        // 2) Nový user (Local)
         var (passwordHash, passwordSalt) = HashPassword(request.Password);
 
         var user = new User
@@ -169,14 +205,24 @@ public class AuthService : IAuthService
             PasswordHash = passwordHash,
             PasswordSalt = passwordSalt,
             AuthProvider = "Local",
+            EmailVerified = false,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow
         };
 
         await _userRepository.AddAsync(user);
+        await _userRepository.SaveChangesAsync();
 
-        return GenerateAuthResult(user);
+        var expiresAtNew = await CreateAndSendEmailVerificationAsync(user);
+
+        return new RegisterResultDto
+        {
+            Message = "Verification code has been sent to your email.",
+            Email = user.Email,
+            CodeExpiresAt = expiresAtNew
+        };
     }
+
 
     public async Task<AuthResultDto> LoginAsync(LoginRequestDto request)
     {
@@ -195,6 +241,9 @@ public class AuthService : IAuthService
 
         if (!VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt))
             throw new UnauthorizedAccessException("Invalid credentials.");
+        if (!user.EmailVerified)
+            throw new UnauthorizedAccessException("Email is not verified. Please verify your email first.");
+
 
         user.UpdatedAt = DateTimeOffset.UtcNow;
         await _userRepository.SaveChangesAsync();
@@ -260,6 +309,116 @@ Po přihlášení doporučujeme heslo okamžitě změnit.
 
 Fakturka"
         );
+    }
+
+    private async Task<DateTimeOffset> CreateAndSendEmailVerificationAsync(User user)
+    {
+        var pepper = _configuration["Security:EmailCodePepper"]
+            ?? throw new InvalidOperationException("Security:EmailCodePepper missing.");
+
+        var code = GenerateNumericCode(6);
+        var codeHash = HashOneTimeCode(code, user.Email, pepper);
+
+        var expiresAt = DateTimeOffset.UtcNow.AddMinutes(15);
+
+        // zneplatni starý aktivní kód (volitelně – nebo nech historii)
+        var existing = await _emailVerificationRepo.GetActiveByUserIdAsync(user.Id);
+        if (existing != null)
+        {
+            // jednoduše expirovat
+            existing.ExpiresAt = DateTimeOffset.UtcNow;
+            await _emailVerificationRepo.SaveChangesAsync();
+        }
+
+        var verification = new EmailVerification
+        {
+            UserId = user.Id,
+            Email = user.Email,
+            CodeHash = codeHash,
+            ExpiresAt = expiresAt,
+            Attempts = 0,
+            MaxAttempts = 5
+        };
+
+        await _emailVerificationRepo.AddAsync(verification);
+        await _emailVerificationRepo.SaveChangesAsync();
+
+        await _emailService.SendAsync(
+            user.Email,
+            "Ověření emailu – Fakturka",
+    $@"Dobrý den,
+
+pro dokončení registrace zadejte tento ověřovací kód:
+
+{code}
+
+Kód je platný do: {expiresAt:yyyy-MM-dd HH:mm} (UTC)
+
+Pokud jste registraci neprováděl/a, email ignorujte.
+
+Fakturka");
+
+        return expiresAt;
+    }
+    public async Task<AuthResultDto> VerifyEmailAsync(string email, string code)
+    {
+        if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(code))
+            throw new ArgumentException("Email and code are required.");
+
+        email = email.Trim().ToLowerInvariant();
+        code = code.Trim();
+
+        var pepper = _configuration["Security:EmailCodePepper"]
+            ?? throw new InvalidOperationException("Security:EmailCodePepper missing.");
+
+        var v = await _emailVerificationRepo.GetActiveByEmailAsync(email);
+        if (v == null)
+            throw new UnauthorizedAccessException("Invalid or expired code.");
+
+        if (v.Attempts >= v.MaxAttempts)
+            throw new UnauthorizedAccessException("Too many attempts. Please request a new code.");
+
+        var incomingHash = HashOneTimeCode(code, email, pepper);
+
+        v.Attempts++;
+        if (v.CodeHash != incomingHash)
+        {
+            await _emailVerificationRepo.SaveChangesAsync();
+            throw new UnauthorizedAccessException("Invalid or expired code.");
+        }
+
+        // OK
+        v.VerifiedAt = DateTimeOffset.UtcNow;
+
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+            throw new UnauthorizedAccessException("User not found.");
+
+        user.EmailVerified = true;
+        user.UpdatedAt = DateTimeOffset.UtcNow;
+
+        await _userRepository.SaveChangesAsync();
+        await _emailVerificationRepo.SaveChangesAsync();
+
+        // vydat JWT
+        return GenerateAuthResult(user);
+    }
+
+    public async Task ResendVerificationAsync(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return;
+
+        email = email.Trim().ToLowerInvariant();
+
+        var user = await _userRepository.GetByEmailAsync(email);
+        if (user == null)
+            return;
+
+        if (user.EmailVerified)
+            return;
+
+        await CreateAndSendEmailVerificationAsync(user);
     }
 
     #region helpers
@@ -352,6 +511,20 @@ Fakturka"
         return CryptographicOperations.FixedTimeEquals(
             Convert.FromBase64String(storedHash),
             Convert.FromBase64String(computedHash));
+    }
+    private static string GenerateNumericCode(int digits = 6)
+    {
+        var max = (int)Math.Pow(10, digits);
+        var value = RandomNumberGenerator.GetInt32(0, max);
+        return value.ToString(new string('0', digits));
+    }
+
+    private static string HashOneTimeCode(string code, string email, string pepper)
+    {
+        // HMAC-SHA256(email + ":" + code), pepper z configu
+        using var hmac = new HMACSHA256(Encoding.UTF8.GetBytes(pepper));
+        var bytes = Encoding.UTF8.GetBytes($"{email}:{code}");
+        return Convert.ToBase64String(hmac.ComputeHash(bytes));
     }
 
     #endregion
