@@ -1,6 +1,6 @@
 import React from "react";
-import { Button, Link, Stack, TextField, Typography } from "@mui/material";
-import { Link as RouterLink } from "react-router-dom";
+import { Alert, Button, Link, Stack, TextField, Typography } from "@mui/material";
+import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRegisterMutation } from "../../features/auth/authApi";
@@ -12,6 +12,10 @@ type Props = {
 
 export const RegistrationForm = ({ title = "Registration" }: Props) => {
     const [registerUser, { isLoading }] = useRegisterMutation();
+    const [submitError, setSubmitError] = React.useState<string | null>(null);
+    const [params] = useSearchParams();
+    const navigate = useNavigate();
+    const callbackUrl = params.get("callbackUrl") || "/";
 
     const {
         handleSubmit,
@@ -23,9 +27,28 @@ export const RegistrationForm = ({ title = "Registration" }: Props) => {
     });
 
     const onSubmit = async (values: RegisterFormValues) => {
+        setSubmitError(null);
         // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { confirmPassword: _confirmPassword, ...payload } = values;
-        await registerUser(payload).unwrap();
+        try {
+            const result = await registerUser(payload).unwrap();
+            const qs = new URLSearchParams({
+                email: result.email,
+                callbackUrl,
+            });
+            navigate(`/verify-email?${qs.toString()}`, { replace: true });
+        } catch (err) {
+            const anyErr = err as { data?: unknown; message?: string };
+            const data = anyErr?.data;
+            const message =
+                typeof data === "string"
+                    ? data
+                    : (data as { message?: string; error?: string } | undefined)?.message ??
+                      (data as { message?: string; error?: string } | undefined)?.error ??
+                      anyErr?.message ??
+                      "Registration failed";
+            setSubmitError(String(message));
+        }
     };
 
     return (
@@ -41,6 +64,7 @@ export const RegistrationForm = ({ title = "Registration" }: Props) => {
             </Stack>
             <form onSubmit={handleSubmit(onSubmit)} noValidate>
                 <Stack spacing={2}>
+                    {submitError && <Alert severity="error">{submitError}</Alert>}
                     <Controller
                         name="firstName"
                         control={control}
@@ -124,4 +148,3 @@ export const RegistrationForm = ({ title = "Registration" }: Props) => {
         </Stack>
     );
 };
-

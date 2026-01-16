@@ -3,6 +3,7 @@ import App from "../App";
 import Layout from "../layouts/Dashboard";
 import ProtectedRoute from "./ProtectedRoute";
 import SignIn from "../pages/SignIn";
+import VerifyEmail from "../pages/VerifyEmail";
 import Customers from "../pages/Customers";
 import Invoices from "../pages/Invoices";
 import CustomersForm from "../pages/CustomersForm";
@@ -18,6 +19,7 @@ export const router = createBrowserRouter([
             { path: "/sign-in", element: <SignIn /> },
             { path: "/sign-up", element: <SignIn /> },
             { path: "/forgot-password", element: <SignIn /> },
+            { path: "/verify-email", element: <VerifyEmail /> },
             {
                 path: "/",
                 element: <ProtectedRoute />,

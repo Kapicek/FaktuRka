@@ -9,6 +9,12 @@ export type RegisterAttributes = {
     lastName: string;
 };
 
+export type RegisterResponse = {
+    message: string;
+    email: string;
+    codeExpiresAt: string;
+};
+
 export type LoginAttributes = {
     email: string;
     password: string;
@@ -34,6 +40,15 @@ export type GoogleLoginAttributes = {
 };
 
 export type ForgotPasswordAttributes = {
+    email: string;
+};
+
+export type VerifyEmailAttributes = {
+    email: string;
+    code: string;
+};
+
+export type ResendVerificationAttributes = {
     email: string;
 };
 
@@ -70,7 +85,7 @@ export type ActionResponse = {
 export const authApi = baseApi.injectEndpoints({
     endpoints: (build) => ({
         // ===== Registration =====
-        register: build.mutation<ActionResponse, RegisterAttributes>({
+        register: build.mutation<RegisterResponse, RegisterAttributes>({
             query: (attrs) => ({
                 url: "/Auth/register",
                 method: "POST",
@@ -78,12 +93,29 @@ export const authApi = baseApi.injectEndpoints({
             }),
         }),
 
-        // ===== Klasický login =====
-        login: build.mutation<AuthResponse, LoginAttributes>({
-            query: ({ rememberMe: _remember, ...attrs }) => ({
-                url: "/Auth/login",
+        // ===== Email verification =====
+        verifyEmail: build.mutation<AuthResponse, VerifyEmailAttributes>({
+            query: (attrs) => ({
+                url: "/Auth/verify-email",
                 method: "POST",
                 body: attrs,
+            }),
+        }),
+
+        resendVerification: build.mutation<{ message?: string }, ResendVerificationAttributes>({
+            query: (attrs) => ({
+                url: "/Auth/resend-verification",
+                method: "POST",
+                body: attrs,
+            }),
+        }),
+
+        // ===== Klasický login =====
+        login: build.mutation<AuthResponse, LoginAttributes>({
+            query: ({ email, password }) => ({
+                url: "/Auth/login",
+                method: "POST",
+                body: { email, password },
             }),
         }),
 
@@ -137,6 +169,8 @@ export const authApi = baseApi.injectEndpoints({
 
 export const {
     useRegisterMutation,
+    useVerifyEmailMutation,
+    useResendVerificationMutation,
     useLoginMutation,
     useGoogleLoginMutation,
     useForgotPasswordMutation,

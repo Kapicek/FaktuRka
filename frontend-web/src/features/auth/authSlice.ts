@@ -122,6 +122,17 @@ export const authSlice = createSlice({
                     localStorage.removeItem("auth_profile");
                 }
             })
+            .addMatcher(authApi.endpoints.verifyEmail.matchFulfilled, (state, { payload }) => {
+                state.token = payload.token;
+                state.user = parseJwt(payload.token);
+                state.profile = payload.profile ?? null;
+                localStorage.setItem("auth_token", payload.token);
+                if (payload.profile) {
+                    localStorage.setItem("auth_profile", JSON.stringify(payload.profile));
+                } else {
+                    localStorage.removeItem("auth_profile");
+                }
+            })
             .addMatcher(profileApi.endpoints.getMyProfile.matchFulfilled, (state, { payload }) => {
                 state.profile = payload;
                 localStorage.setItem("auth_profile", JSON.stringify(payload));
